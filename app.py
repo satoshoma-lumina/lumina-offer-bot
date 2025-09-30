@@ -2,15 +2,16 @@ import os
 import json
 import gspread
 import pandas as pd
-# import google.generativeai as genai # ← 古いライブラリは使わない
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
 
-# ★★★★★ ここからが最終修正 ★★★★★
 import vertexai
 from vertexai.generative_models import GenerativeModel
+# ★★★★★ ここからが最終修正 ★★★★★
+from google.oauth2 import service_account
+import google.auth
 # ★★★★★ ここまでが最終修正 ★★★★★
 
 from flask import Flask, request, abort, jsonify
@@ -38,9 +39,11 @@ SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
 creds_path = '/etc/secrets/google_credentials.json'
+
+# gspread用の認証
 client = gspread.service_account(filename=creds_path)
 
-spreadsheet = client.open("店舗マスタ_LUMINA Offer用")
+spreadsheet = client.open("店舗マスタ_Lumina Offer用")
 user_management_sheet = spreadsheet.worksheet("ユーザー管理")
 offer_management_sheet = spreadsheet.worksheet("オファー管理")
 salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
@@ -52,7 +55,6 @@ handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 # ★★★★★ ここからが最終修正 ★★★★★
 # Vertex AIの初期化
 try:
-    # google_credentials.json からプロジェクトIDを自動的に読み込む
     with open(creds_path) as f:
         creds_json = json.load(f)
         project_id = creds_json.get('project_id')
@@ -60,7 +62,11 @@ try:
     if not project_id:
         raise ValueError("google_credentials.json に project_id が見つかりません。")
 
-    vertexai.init(project=project_id, location="us-central1")
+    # サービスアカウントファイルから認証情報オブジェクトを作成
+    credentials = service_account.Credentials.from_service_account_file(creds_path)
+
+    # 認証情報を明示的に渡して初期化
+    vertexai.init(project=project_id, location="us-central1", credentials=credentials)
     print(f"Vertex AI initialized successfully for project: {project_id}")
 except Exception as e:
     print(f"Vertex AIの初期化に失敗しました: {e}")
@@ -116,14 +122,11 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # ★★★★★ ここからが最終修正 ★★★★★
     try:
-        # Vertex AI 専用のモデルオブジェクトを作成
         model = GenerativeModel("gemini-1.5-flash-001")
     except Exception as e:
         print(f"Geminiモデルの読み込みエラー: {e}")
         return None, None, "AIモデルの読み込みに失敗しました。"
-    # ★★★★★ ここまでが最終修正 ★★★★★
 
     all_salons_data = salon_master_sheet.get_all_records()
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
@@ -200,11 +203,9 @@ def find_and_generate_offer(user_wishes):
       "first_offer_message": "(ここに1件目のサロン用のオファー文章を記述)"
     }}
     """
-
-    # ★★★★★ ここからが最終修正 ★★★★★
+    
     response = model.generate_content(prompt)
-    # ★★★★★ ここまでが最終修正 ★★★★★
-
+    
     try:
         response_text = response.text
         json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
