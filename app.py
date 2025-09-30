@@ -117,7 +117,7 @@ def process_and_send_offer(user_id, user_wishes):
 def find_and_generate_offer(user_wishes):
     try:
         # ★★★★★ ここが修正点 ★★★★★
-        model = GenerativeModel("gemini-1.5-flash")
+        model = GenerativeModel("gemini-1.0-pro")
         # ★★★★★ ここまで ★★★★★
     except Exception as e:
         print(f"Geminiモデルの読み込みエラー: {e}")
