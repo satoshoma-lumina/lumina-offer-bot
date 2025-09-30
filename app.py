@@ -41,9 +41,7 @@ creds_path = '/etc/secrets/google_credentials.json'
 # gspread用の認証
 client = gspread.service_account(filename=creds_path)
 
-# ★★★★★ ここが修正点 ★★★★★
 spreadsheet = client.open("店舗マスタ_LUMINA Offer用")
-# ★★★★★ ここまで ★★★★★
 user_management_sheet = spreadsheet.worksheet("ユーザー管理")
 offer_management_sheet = spreadsheet.worksheet("オファー管理")
 salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
@@ -118,7 +116,9 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     try:
-        model = GenerativeModel("gemini-1.5-flash-001")
+        # ★★★★★ ここが修正点 ★★★★★
+        model = GenerativeModel("gemini-1.5-flash")
+        # ★★★★★ ここまで ★★★★★
     except Exception as e:
         print(f"Geminiモデルの読み込みエラー: {e}")
         return None, None, "AIモデルの読み込みに失敗しました。"
