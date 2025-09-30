@@ -13,10 +13,8 @@
         input[type="text"], input[type="date"], input[type="tel"], select {
             width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px;
         }
-        /* 生年月日入力用のスタイル */
         .birthdate-selects { display: flex; gap: 10px; }
         .birthdate-selects select { flex: 1; }
-        
         button {
             width: 100%; padding: 12px; background-color: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;
         }
@@ -38,7 +36,6 @@
                     <option value="男性">男性</option> <option value="女性">女性</option> <option value="その他">その他</option>
                 </select>
             </div>
-
             <div class="form-group">
                 <label>生年月日</label>
                 <div class="birthdate-selects">
@@ -80,7 +77,6 @@
                     <option value="マネージャー以上">マネージャー以上</option>
                 </select>
             </div>
-            
             <div class="form-group">
                 <label for="area_prefecture">希望エリア（都道府県）</label>
                 <select id="area_prefecture" name="area_prefecture" required>
@@ -157,55 +153,38 @@
             const yearSelect = document.getElementById('birth_year');
             const monthSelect = document.getElementById('birth_month');
             const daySelect = document.getElementById('birth_day');
-
-            // 日の選択肢を更新する関数
             function updateDays() {
                 const year = parseInt(yearSelect.value);
                 const month = parseInt(monthSelect.value);
                 const currentDay = daySelect.value;
-                
-                daySelect.innerHTML = '<option value="">日</option>'; // いったんリセット
-                
+                daySelect.innerHTML = '<option value="">日</option>';
                 if (year && month) {
-                    // 月の最終日を取得 (翌月の0日目を指定すると最終日になる)
                     const daysInMonth = new Date(year, month, 0).getDate();
                     for (let i = 1; i <= daysInMonth; i++) {
                         daySelect.innerHTML += `<option value="${i}">${i}</option>`;
                     }
-                    // 以前選択していた日を復元
                     if (currentDay <= daysInMonth) {
                         daySelect.value = currentDay;
                     }
                 }
             }
-
-            // 年の選択肢 (美容師を想定し18歳〜60歳前に設定)
             const currentYear = new Date().getFullYear();
             yearSelect.innerHTML = '<option value="">年</option>';
             for (let i = currentYear - 18; i >= currentYear - 60; i--) {
                 yearSelect.innerHTML += `<option value="${i}">${i}</option>`;
             }
-
-            // 月の選択肢
             monthSelect.innerHTML = '<option value="">月</option>';
             for (let i = 1; i <= 12; i++) {
                 monthSelect.innerHTML += `<option value="${i}">${i}</option>`;
             }
-            
-            // 初期の日付は空にしておく
             daySelect.innerHTML = '<option value="">日</option>';
-
-            // 年または月が変更されたら、日の選択肢を更新する
             yearSelect.addEventListener('change', updateDays);
             monthSelect.addEventListener('change', updateDays);
         }
-        
         async function main() {
-            setupBirthdateSelectors(); // プルダウンを初期化
-
+            setupBirthdateSelectors();
             const liffId = "2008066763-ZJ72p7OJ";
-            const endpointUrl = "https://lumina-offer-bot.onrender.com/trigger-offer";
-
+            const endpointUrl = "https://lumina-offer-bot-new.onrender.com/trigger-offer";
             try {
                 await liff.init({ liffId: liffId });
                 if (!liff.isLoggedIn()) { liff.login(); return; }
@@ -216,26 +195,19 @@
                     e.preventDefault();
                     document.getElementById('loading').style.display = 'block';
                     document.getElementById('error').style.display = 'none';
-                    
                     const formData = new FormData(form);
                     const wishes = {};
                     for (const [key, value] of formData.entries()) {
                         wishes[key] = value;
                     }
-
-                    // 年月日から YYYY-MM-DD 形式の文字列を生成
                     const year = wishes.birth_year;
                     const month = String(wishes.birth_month).padStart(2, '0');
                     const day = String(wishes.birth_day).padStart(2, '0');
                     wishes.birthdate = `${year}-${month}-${day}`;
-                    
-                    // 分割されたデータは不要なので削除
                     delete wishes.birth_year;
                     delete wishes.birth_month;
                     delete wishes.birth_day;
-                    
                     const payload = { userId: userId, wishes: wishes };
-                    
                     try {
                         const response = await fetch(endpointUrl, {
                             method: 'POST', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify(payload),

@@ -67,7 +67,6 @@
                     </select>
                 </div>
             </div>
-
             <div class="form-section">
                 <p class="form-section-title">Step 2/3：あなたの未来について</p>
                 <div class="form-group">
@@ -93,7 +92,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="form-section">
                 <p class="form-section-title">Step 3/3：あなたの価値観について</p>
                 <div class="form-group">
@@ -124,27 +122,17 @@
             <button type="submit" id="submit-button">アンケートを送信する</button>
         </form>
     </div>
-
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
             const liffId = "2008066763-JAkGQkmw"; 
             await liff.init({ liffId });
-
             if (!liff.isLoggedIn()) { liff.login(); return; }
-
             const profile = await liff.getProfile();
             const userId = profile.userId;
-
-            // ユーザーの役職に応じて質問4のラベルを変更
             const context = liff.getContext();
             if (context && context.accessToken) {
-                // ここでサーバーに問い合わせて初回登録時の役職を取得するのが理想
-                // 今回は仮で「スタイリスト歴」と表示
-                // document.getElementById('q4_label').textContent = `4. スタイリスト歴`;
             }
-
-            // チェックボックスの選択を3つまでに制限
             const checkboxes = document.querySelectorAll('input[name="q6_priorities"]');
             checkboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', () => {
@@ -155,25 +143,20 @@
                     }
                 });
             });
-
             document.getElementById('questionnaireForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
                 const formData = new FormData(e.target);
                 const answers = { userId };
                 
-                // 複数選択可能なチェックボックスのデータをカンマ区切りで結合
                 const priorities = Array.from(formData.getAll('q6_priorities')).join(',');
                 answers['q6_priorities'] = priorities;
-
-                // 他のデータを格納
                 for (const [key, value] of formData.entries()) {
                     if (key !== 'q6_priorities') {
                         answers[key] = value;
                     }
                 }
-
-                const endpointUrl = "https://lumina-offer-bot.onrender.com/submit-questionnaire";
+                const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-questionnaire";
                 
                 try {
                     const response = await fetch(endpointUrl, {
@@ -187,7 +170,6 @@
                         throw new Error('サーバーエラー');
                     }
                 } catch (error) {
-                    // エラー処理
                 }
             });
         }

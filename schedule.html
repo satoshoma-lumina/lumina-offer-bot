@@ -40,7 +40,6 @@
                     <label><input type="radio" name="interviewMethod" value="サロン見学で話を聞いてみる"> 💇‍♀️ サロン見学で話を聞いてみる</label>
                 </div>
             </div>
-
             <div class="form-group">
                 <h2>ご希望の候補日時を3つ入力してください</h2>
                 <div class="date-group">
@@ -76,11 +75,8 @@
         <div id="loading">送信中...</div>
         <div id="error"></div>
     </div>
-
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        // ★★★★★ ここからがJavaScriptの変更点 ★★★★★
-        // 時間選択のプルダウンを生成する関数
         function populateTimeSelects() {
             const timeSelects = document.querySelectorAll('select[name^="startTime"], select[name^="endTime"]');
             let options = '<option value="">--:--</option>';
@@ -96,11 +92,8 @@
                 select.innerHTML = options;
             });
         }
-
         async function main() {
-            populateTimeSelects(); // 時間の選択肢を生成
-
-            // (以降のmain関数の中身は変更ありません)
+            populateTimeSelects();
             const liffId = "2008066763-X5mxymoj"; 
             try {
                 await liff.init({ liffId });
@@ -109,25 +102,20 @@
                 document.getElementById('error').style.display = 'block';
                 return;
             }
-
             if (!liff.isLoggedIn()) {
                 liff.login();
                 return;
             }
-
             const profile = await liff.getProfile();
             const userId = profile.userId;
-
             const urlParams = new URLSearchParams(window.location.search);
             const salonId = urlParams.get('salonId');
-
             const form = document.getElementById('scheduleForm');
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 document.getElementById('loading').style.display = 'block';
                 document.getElementById('error').style.display = 'none';
                 document.getElementById('submit-button').disabled = true;
-
                 const formData = new FormData(form);
                 const scheduleData = {
                     userId: userId,
@@ -143,8 +131,7 @@
                     startTime3: formData.get('startTime3') || '',
                     endTime3: formData.get('endTime3') || '',
                 };
-
-                const endpointUrl = "https://lumina-offer-bot.onrender.com/submit-schedule";
+                const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-schedule";
                 
                 try {
                     const response = await fetch(endpointUrl, {
@@ -152,7 +139,6 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(scheduleData)
                     });
-
                     if (response.ok) {
                         const result = await response.json();
                         if (result.nextLiffUrl) {
@@ -174,7 +160,6 @@
             });
         }
         main();
-        // ★★★★★ ここまでがJavaScriptの変更点 ★★★★★
     </script>
 </body>
 </html>
