@@ -9,10 +9,8 @@ import pkg_resources
 
 import vertexai
 from vertexai.generative_models import GenerativeModel
-# ★★★★★ ここからが最終修正 ★★★★★
 from google.oauth2 import service_account
 import google.auth
-# ★★★★★ ここまでが最終修正 ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -43,7 +41,9 @@ creds_path = '/etc/secrets/google_credentials.json'
 # gspread用の認証
 client = gspread.service_account(filename=creds_path)
 
-spreadsheet = client.open("店舗マスタ_Lumina Offer用")
+# ★★★★★ ここが修正点 ★★★★★
+spreadsheet = client.open("店舗マスタ_LUMINA Offer用")
+# ★★★★★ ここまで ★★★★★
 user_management_sheet = spreadsheet.worksheet("ユーザー管理")
 offer_management_sheet = spreadsheet.worksheet("オファー管理")
 salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
@@ -52,7 +52,6 @@ salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 
-# ★★★★★ ここからが最終修正 ★★★★★
 # Vertex AIの初期化
 try:
     with open(creds_path) as f:
@@ -62,15 +61,11 @@ try:
     if not project_id:
         raise ValueError("google_credentials.json に project_id が見つかりません。")
 
-    # サービスアカウントファイルから認証情報オブジェクトを作成
     credentials = service_account.Credentials.from_service_account_file(creds_path)
-
-    # 認証情報を明示的に渡して初期化
     vertexai.init(project=project_id, location="us-central1", credentials=credentials)
     print(f"Vertex AI initialized successfully for project: {project_id}")
 except Exception as e:
     print(f"Vertex AIの初期化に失敗しました: {e}")
-# ★★★★★ ここまでが最終修正 ★★★★★
 
 
 def send_notification_email(subject, body):
@@ -203,9 +198,9 @@ def find_and_generate_offer(user_wishes):
       "first_offer_message": "(ここに1件目のサロン用のオファー文章を記述)"
     }}
     """
-    
+
     response = model.generate_content(prompt)
-    
+
     try:
         response_text = response.text
         json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
