@@ -6,9 +6,7 @@ import google.generativeai as genai
 import re
 from datetime import datetime
 import traceback
-# ★★★★★ ここからがバージョン確認用の追加コード ★★★★★
 import pkg_resources
-# ★★★★★ ここまでがバージョン確認用の追加コード ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -25,7 +23,6 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
-# ★★★★★ ここからがバージョン確認用の追加コード ★★★★★
 try:
     genai_version = pkg_resources.get_distribution("google-generativeai").version
     gspread_version = pkg_resources.get_distribution("gspread").version
@@ -35,7 +32,6 @@ try:
     print("=============================================")
 except Exception as e:
     print(f"Could not print library versions on startup: {e}")
-# ★★★★★ ここまでがバージョン確認用の追加コード ★★★★★
 
 app = Flask(__name__)
 CORS(app)
@@ -58,9 +54,11 @@ salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 
-# Gemini API
-genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+# ★★★★★ ここからが変更点 ★★★★★
+# Gemini APIのグローバルな初期化を削除します
+# genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+# model = genai.GenerativeModel('gemini-1.5-flash')
+# ★★★★★ ここまでが変更点 ★★★★★
 
 
 def send_notification_email(subject, body):
@@ -112,6 +110,16 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
+    # ★★★★★ ここからが変更点 ★★★★★
+    # Gemini APIを使用直前にここで初期化します
+    try:
+        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+        model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        print(f"Gemini APIの初期化エラー: {e}")
+        return None, None, "AIサービスの初期化に失敗しました。"
+    # ★★★★★ ここまでが変更点 ★★★★★
+
     all_salons_data = salon_master_sheet.get_all_records()
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
 
