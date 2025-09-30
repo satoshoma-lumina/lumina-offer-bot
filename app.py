@@ -60,7 +60,11 @@ try:
         raise ValueError("google_credentials.json に project_id が見つかりません。")
 
     credentials = service_account.Credentials.from_service_account_file(creds_path)
-    vertexai.init(project=project_id, location="us-central1", credentials=credentials)
+    
+    # ★★★★★ ここが最終修正点 ★★★★★
+    vertexai.init(project=project_id, location="asia-northeast1", credentials=credentials)
+    # ★★★★★ ここまで ★★★★★
+    
     print(f"Vertex AI initialized successfully for project: {project_id}")
 except Exception as e:
     print(f"Vertex AIの初期化に失敗しました: {e}")
@@ -116,9 +120,8 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     try:
-        # ★★★★★ ここが修正点 ★★★★★
+        # 安定している gemini-1.0-pro を使用します
         model = GenerativeModel("gemini-1.0-pro")
-        # ★★★★★ ここまで ★★★★★
     except Exception as e:
         print(f"Geminiモデルの読み込みエラー: {e}")
         return None, None, "AIモデルの読み込みに失敗しました。"
@@ -225,6 +228,8 @@ def find_and_generate_offer(user_wishes):
         print(f"Geminiからの応答解析エラー: {e}")
         print(f"Geminiからの元テキスト: {response.text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
+
+# ( ... 以降の create_salon_flex_message や Flask のルーティング部分は変更ありません ... )
 
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
