@@ -4,8 +4,12 @@ import gspread
 import pandas as pd
 import google.generativeai as genai
 import re
-from datetime import datetime, timedelta
-# from oauth2client.service_account import ServiceAccountCredentials # ← この行を削除
+from datetime import datetime
+import traceback
+# ★★★★★ ここからがバージョン確認用の追加コード ★★★★★
+import pkg_resources
+# ★★★★★ ここまでがバージョン確認用の追加コード ★★★★★
+
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
 from geopy.geocoders import Nominatim
@@ -21,6 +25,18 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
+# ★★★★★ ここからがバージョン確認用の追加コード ★★★★★
+try:
+    genai_version = pkg_resources.get_distribution("google-generativeai").version
+    gspread_version = pkg_resources.get_distribution("gspread").version
+    print("===== INSTALLED LIBRARY VERSIONS ON STARTUP =====")
+    print(f"google-generativeai: {genai_version}")
+    print(f"gspread: {gspread_version}")
+    print("=============================================")
+except Exception as e:
+    print(f"Could not print library versions on startup: {e}")
+# ★★★★★ ここまでがバージョン確認用の追加コード ★★★★★
+
 app = Flask(__name__)
 CORS(app)
 
@@ -30,11 +46,8 @@ QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
-# ★★★★★ ここからが変更点 ★★★★★
-# gspreadの認証方法を最新のgspread.service_accountに変更
 creds_path = '/etc/secrets/google_credentials.json'
 client = gspread.service_account(filename=creds_path)
-# ★★★★★ ここまでが変更点 ★★★★★
 
 spreadsheet = client.open("店舗マスタ_LUMINA Offer用")
 user_management_sheet = spreadsheet.worksheet("ユーザー管理")
@@ -47,7 +60,6 @@ handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 
 # Gemini API
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
-# モデルは高性能なflashに戻します
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 
@@ -96,11 +108,8 @@ def process_and_send_offer(user_id, user_wishes):
 
 
     except Exception as e:
-        # エラーログをより詳細に出力するように変更
-        import traceback
         print(f"オファー送信中のエラー: {e}")
         traceback.print_exc()
-
 
 def find_and_generate_offer(user_wishes):
     all_salons_data = salon_master_sheet.get_all_records()
