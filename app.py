@@ -2,12 +2,16 @@ import os
 import json
 import gspread
 import pandas as pd
-import google.generativeai as genai
+# import google.generativeai as genai # ← 古いライブラリは使わない
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
-import google.api_core.client_options # ★★★★★ 最終修正で追加 ★★★★★
+
+# ★★★★★ ここからが最終修正 ★★★★★
+import vertexai
+from vertexai.generative_models import GenerativeModel
+# ★★★★★ ここまでが最終修正 ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -23,16 +27,6 @@ from linebot.v3.messaging import (
     FlexMessage, FlexContainer
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
-
-try:
-    genai_version = pkg_resources.get_distribution("google-generativeai").version
-    gspread_version = pkg_resources.get_distribution("gspread").version
-    print("===== INSTALLED LIBRARY VERSIONS ON STARTUP =====")
-    print(f"google-generativeai: {genai_version}")
-    print(f"gspread: {gspread_version}")
-    print("=============================================")
-except Exception as e:
-    print(f"Could not print library versions on startup: {e}")
 
 app = Flask(__name__)
 CORS(app)
@@ -54,6 +48,24 @@ salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
+
+# ★★★★★ ここからが最終修正 ★★★★★
+# Vertex AIの初期化
+try:
+    # google_credentials.json からプロジェクトIDを自動的に読み込む
+    with open(creds_path) as f:
+        creds_json = json.load(f)
+        project_id = creds_json.get('project_id')
+
+    if not project_id:
+        raise ValueError("google_credentials.json に project_id が見つかりません。")
+
+    vertexai.init(project=project_id, location="us-central1")
+    print(f"Vertex AI initialized successfully for project: {project_id}")
+except Exception as e:
+    print(f"Vertex AIの初期化に失敗しました: {e}")
+# ★★★★★ ここまでが最終修正 ★★★★★
+
 
 def send_notification_email(subject, body):
     from_email = os.environ.get('MAIL_USERNAME')
@@ -105,19 +117,12 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     # ★★★★★ ここからが最終修正 ★★★★★
-    # APIサーバーの場所を直接指定して、接続エラーを回避します
     try:
-        client_options = google.api_core.client_options.ClientOptions(
-            api_endpoint="us-central1-aiplatform.googleapis.com",
-        )
-        genai.configure(
-            api_key=os.environ.get('GEMINI_API_KEY'),
-            client_options=client_options
-        )
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Vertex AI 専用のモデルオブジェクトを作成
+        model = GenerativeModel("gemini-1.5-flash-001")
     except Exception as e:
-        print(f"Gemini APIの初期化エラー: {e}")
-        return None, None, "AIサービスの初期化に失敗しました。"
+        print(f"Geminiモデルの読み込みエラー: {e}")
+        return None, None, "AIモデルの読み込みに失敗しました。"
     # ★★★★★ ここまでが最終修正 ★★★★★
 
     all_salons_data = salon_master_sheet.get_all_records()
@@ -196,7 +201,9 @@ def find_and_generate_offer(user_wishes):
     }}
     """
 
+    # ★★★★★ ここからが最終修正 ★★★★★
     response = model.generate_content(prompt)
+    # ★★★★★ ここまでが最終修正 ★★★★★
 
     try:
         response_text = response.text
