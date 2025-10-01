@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 import traceback
 import pkg_resources
-import requests # ★★★★★ 最終修正で追加 ★★★★★
+import requests
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -177,14 +177,14 @@ def find_and_generate_offer(user_wishes):
     """
 
     # ★★★★★ ここからが最終修正 ★★★★★
-    # google-generativeaiライブラリをバイパスし、直接REST APIを呼び出します
     try:
         api_key = os.environ.get('GEMINI_API_KEY')
         if not api_key:
             return None, None, "GEMINI_API_KEYが設定されていません。"
 
-        # 安定している v1 のエンドポイントと、gemini-proモデルを直接指定
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
+        # あなたのプロジェクトで利用可能な、最新のモデル名を指定します
+        model_name = "gemini-2.5-flash"
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
         
