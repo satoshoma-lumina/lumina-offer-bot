@@ -222,7 +222,6 @@ def find_and_generate_offer(user_wishes):
         print(f"Geminiからの元テキスト: {response.text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
 
-# ( ... 以降のコードは変更ありません ... )
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
     if "アシスタント" in db_role:
