@@ -2,18 +2,13 @@ import os
 import json
 import gspread
 import pandas as pd
+import google.generativeai as genai
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
 
-import vertexai
-# ★★★★★ ここからが診断用コード ★★★★★
-from google.cloud import aiplatform
-# ★★★★★ ここまで ★★★★★
-from vertexai.generative_models import GenerativeModel
 from google.oauth2 import service_account
-import google.auth
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -52,22 +47,6 @@ salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
-
-# Vertex AIの初期化
-try:
-    with open(creds_path) as f:
-        creds_json = json.load(f)
-        project_id = creds_json.get('project_id')
-
-    if not project_id:
-        raise ValueError("google_credentials.json に project_id が見つかりません。")
-
-    credentials = service_account.Credentials.from_service_account_file(creds_path)
-    vertexai.init(project=project_id, location="asia-northeast1", credentials=credentials)
-    print(f"Vertex AI initialized successfully for project: {project_id}")
-except Exception as e:
-    print(f"Vertex AIの初期化に失敗しました: {e}")
-
 
 def send_notification_email(subject, body):
     from_email = os.environ.get('MAIL_USERNAME')
@@ -118,32 +97,122 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # ★★★★★ ここからが診断用コード ★★★★★
+    # ★★★★★ ここからが最終修正 ★★★★★
     try:
-        print("--- Vertex AI 最終診断テスト開始 ---")
-        
-        #
-        # 仮説：Geminiモデルだけが利用不可で、Vertex AIの他の機能は使えるはず。
-        # これを検証するため、プロジェクトに存在する「エンドポイント」の一覧を取得してみます。
-        #
-        endpoints = aiplatform.Endpoint.list()
-        
-        print("--- Vertex AI 最終診断テスト成功 ---")
-        print("エンドポイント一覧の取得に成功しました。認証、権限、プロジェクト設定は正常です。")
-        
-        # エンドポイントの一覧をログに出力（通常は空のはずです）
-        endpoint_names = [endpoint.display_name for endpoint in endpoints]
-        print(f"取得したエンドポイント: {endpoint_names}")
-
-        return None, None, "診断成功：プロジェクトの基本設定は正常です。Geminiモデルの利用権限に問題があります。"
-
+        # サービスアカウント情報を使って、Gemini APIを確実に認証します
+        credentials = service_account.Credentials.from_service_account_file(
+            creds_path,
+            scopes=['https://www.googleapis.com/auth/generative-language'] # Gemini API用の権限
+        )
+        genai.configure(credentials=credentials)
+        model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
-        print(f"--- Vertex AI 最終診断テスト失敗 ---")
-        print("Vertex AIの基本機能（エンドポイント一覧取得）の呼び出しに失敗しました。")
-        print("これは、プロジェクトがVertex AIサービスにアクセスできない根深い問題を示しています。")
-        traceback.print_exc()
-        return None, None, f"診断失敗：{e}"
-    # ★★★★★ ここまでが診断用コード ★★★★★
+        print(f"Gemini APIの初期化エラー: {e}")
+        return None, None, "AIサービスの初期化に失敗しました。"
+    # ★★★★★ ここまでが最終修正 ★★★★★
+
+    all_salons_data = salon_master_sheet.get_all_records()
+    if not all_salons_data: return None, None, "サロン情報が見つかりません。"
+
+    salons_df = pd.DataFrame(all_salons_data)
+
+    try:
+        prefecture = user_wishes.get("area_prefecture", "")
+        detail_area = user_wishes.get("area_detail", "")
+        full_area = f"{prefecture} {detail_area}"
+
+        geolocator = Nominatim(user_agent="lumina_offer_geocoder")
+        location = geolocator.geocode(full_area, timeout=10)
+
+        if not location:
+            print(f"ジオコーディング失敗: {full_area}")
+            return None, None, "希望勤務地の位置情報を特定できませんでした。"
+        user_coords = (location.latitude, location.longitude)
+    except Exception as e:
+        print(f"ジオコーディング中にエラーが発生: {e}")
+        return None, None, "位置情報取得中にエラーが発生しました。"
+
+    salons_df['緯度'] = pd.to_numeric(salons_df['緯度'], errors='coerce')
+    salons_df['経度'] = pd.to_numeric(salons_df['経度'], errors='coerce')
+    salons_df.dropna(subset=['緯度', '経度'], inplace=True)
+
+    distances = [geodesic(user_coords, (salon['緯度'], salon['経度'])).kilometers for _, salon in salons_df.iterrows()]
+
+    salons_df['距離'] = distances
+    nearby_salons = salons_df[salons_df['距離'] <= 25].copy()
+    if nearby_salons.empty: return None, None, "希望勤務地の25km以内に条件に合うサロンが見つかりませんでした。"
+
+    user_role = user_wishes.get("role")
+    user_license = user_wishes.get("license")
+
+    salons_to_consider = nearby_salons[nearby_salons['募集状況'] == '募集中']
+    if salons_to_consider.empty: return None, None, "募集中のサロンがありません。"
+
+    def role_matcher(salon_roles):
+        roles_list = [r.strip() for r in str(salon_roles).split(',')]
+        return user_role in roles_list
+
+    salons_to_consider = salons_to_consider[salons_to_consider['役職'].apply(role_matcher)]
+    if salons_to_consider.empty: return None, None, "役職に合うサロンがありません。"
+
+    if user_license == "取得済み":
+        salons_to_consider = salons_to_consider[salons_to_consider['美容師免許'] == '取得']
+    else:
+        salons_to_consider = salons_to_consider[salons_to_consider['美容師免許'].isin(['取得', '未取得'])]
+    if salons_to_consider.empty: return None, None, "免許条件に合うサロンがありません。"
+
+    salons_json_string = salons_to_consider.to_json(orient='records', force_ascii=False)
+
+    prompt = f"""
+    あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
+    # 候補者プロフィール:
+    {json.dumps(user_wishes, ensure_ascii=False)}
+    # 候補となる求人リスト:
+    {salons_json_string}
+    # あなたのタスク:
+    1. **スコアリング**: 以下の基準で各求人を評価し、合計スコアが高い順に最大3件まで選んでください。
+        - 候補者が「最も興味のある待遇」（プロフィール内'perk'）を、求人が提供している（求人リスト内'待遇'に文字列として含まれている）場合: +10点
+        - 候補者のMBTIの性格特性が、求人の「特徴」と相性が良い場合: +5点
+    2. **オファー文章生成**: スコアが最も高かった1件目のサロンについてのみ、ルールを厳守し、候補者がカジュアル面談に行きたくなるようなオファー文章を150字以内で作成してください。
+        - 冒頭は必ず「LUMINA Offerから、あなたに特別なオファーが届いています。」で始めること。
+        - 候補者が「最も興味のある待遇」が、なぜそのサロンで満たされるのかを説明すること。
+        - 候補者のMBTIの性格特性が、どのようにそのサロンの文化や特徴と合致するのかを説明すること。
+        - 最後は必ず「まずは、サロンから話を聞いてみませんか？」という一文で締めること。
+        - 禁止事項: サロンが直接オファーを送っているかのような表現は避けること。
+    # 回答フォーマット:
+    以下のJSON形式で、厳密に回答してください。
+    {{
+      "ranked_store_ids": [ (ここにスコア上位の'店舗ID'を数値のリストで記述。例: [101, 108, 125]) ],
+      "first_offer_message": "(ここに1件目のサロン用のオファー文章を記述)"
+    }}
+    """
+
+    response = model.generate_content(prompt)
+
+    try:
+        response_text = response.text
+        json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_str_match: raise ValueError("Response does not contain a valid JSON object.")
+        json_str = json_str_match.group(0)
+        gemini_response = json.loads(json_str)
+
+        ranked_ids = gemini_response.get("ranked_store_ids")
+        first_offer_message = gemini_response.get("first_offer_message")
+
+        if not ranked_ids: return None, None, "AIによるスコアリングの結果、最適なサロンが見つかりませんでした。"
+
+        first_match_id = ranked_ids[0]
+        matched_salon_info_series = salons_to_consider[salons_to_consider['店舗ID'].astype(int) == int(first_match_id)]
+
+        if matched_salon_info_series.empty: return None, None, "マッチしたサロン情報が見つかりませんでした。"
+
+        matched_salon_info = matched_salon_info_series.iloc[0].to_dict()
+
+        return ranked_ids, matched_salon_info, first_offer_message
+    except Exception as e:
+        print(f"Geminiからの応答解析エラー: {e}")
+        print(f"Geminiからの元テキスト: {response.text}")
+        return None, None, "AIからの応答解析中にエラーが発生しました。"
 
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
