@@ -32,7 +32,7 @@ QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
-creds_path = '/etc/secrets/google_credentials.json'
+creds_path = '/etc/secrets/delta-wonder-471708-u1-93f8d5bbdf1c.json'
 
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
