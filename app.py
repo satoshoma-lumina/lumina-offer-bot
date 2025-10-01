@@ -8,8 +8,6 @@ from datetime import datetime
 import traceback
 import pkg_resources
 
-from google.oauth2 import service_account
-
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
 from geopy.geocoders import Nominatim
@@ -98,13 +96,9 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     # ★★★★★ ここからが最終修正 ★★★★★
+    # 本来のシンプルなAPIキーによる認証方法に戻します
     try:
-        # サービスアカウント情報を使って、Gemini APIを確実に認証します
-        credentials = service_account.Credentials.from_service_account_file(
-            creds_path,
-            scopes=['https://www.googleapis.com/auth/generative-language'] # Gemini API用の権限
-        )
-        genai.configure(credentials=credentials)
+        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
         model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         print(f"Gemini APIの初期化エラー: {e}")
@@ -300,7 +294,7 @@ def submit_schedule():
             subject = "【LUMINAオファー】面談日程の新規登録がありました"
             body = f"""
             以下の内容で、ユーザーから面談希望日時の登録がありました。
-            速やかにサロンとの日程調整を開始してください。
+            速やかにサロンとの日程調整を開始を開始してください。
 
             ■ ユーザーID: {user_id}
             ■ サロンID: {salon_id}
