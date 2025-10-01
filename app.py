@@ -2,12 +2,15 @@ import os
 import json
 import gspread
 import pandas as pd
+import google.generativeai as genai
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
-import requests # ★★★★★ 最終修正で追加 ★★★★★
 
+# ★★★★★ 最終修正で追加 ★★★★★
+from google.oauth2 import service_account
+# ★★★★★ ここまで ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -96,6 +99,24 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
+    # ★★★★★ ここからが最終修正 ★★★★★
+    # APIキーの代わりに、信頼性の高いサービスアカウント認証を使用します
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            creds_path,
+            scopes=['https://www.googleapis.com/auth/generative-language']
+        )
+        genai.configure(
+            credentials=credentials,
+            transport="rest"  # 念のため通信競合を回避
+        )
+        model = genai.GenerativeModel('gemini-pro')
+    except Exception as e:
+        print(f"Gemini APIの初期化エラー: {e}")
+        traceback.print_exc()
+        return None, None, "AIサービスの初期化に失敗しました。"
+    # ★★★★★ ここまでが最終修正 ★★★★★
+
     all_salons_data = salon_master_sheet.get_all_records()
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
 
@@ -148,7 +169,7 @@ def find_and_generate_offer(user_wishes):
 
     salons_json_string = salons_to_consider.to_json(orient='records', force_ascii=False)
 
-    prompt_text = f"""
+    prompt = f"""
     あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
     # 候補者プロフィール:
     {json.dumps(user_wishes, ensure_ascii=False)}
@@ -172,44 +193,10 @@ def find_and_generate_offer(user_wishes):
     }}
     """
 
-    # ★★★★★ ここからが最終修正 ★★★★★
-    # google-generativeaiライブラリをバイパスし、直接REST APIを呼び出します
-    try:
-        api_key = os.environ.get('GEMINI_API_KEY')
-        if not api_key:
-            return None, None, "GEMINI_API_KEYが設定されていません。"
-
-        # 安定している v1 のエンドポイントを直接指定
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
-
-        headers = {"Content-Type": "application/json"}
-        
-        data = {
-            "contents": [{
-                "parts": [{
-                    "text": prompt_text
-                }]
-            }]
-        }
-
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()  # エラーがあればここで例外を発生させる
-
-        response_json = response.json()
-        response_text = response_json['candidates'][0]['content']['parts'][0]['text']
-
-    except requests.exceptions.RequestException as e:
-        print(f"Gemini APIへのリクエストエラー: {e}")
-        print(f"ステータスコード: {e.response.status_code if e.response else 'N/A'}")
-        print(f"応答内容: {e.response.text if e.response else 'N/A'}")
-        return None, None, f"AIサービスへの接続に失敗しました: {e}"
-    except (KeyError, IndexError) as e:
-        print(f"Gemini APIからの応答形式が予期せぬものです: {e}")
-        print(f"受信したJSON: {response_json}")
-        return None, None, "AIからの応答形式が正しくありません。"
-    # ★★★★★ ここまでが最終修正 ★★★★★
+    response = model.generate_content(prompt)
 
     try:
+        response_text = response.text
         json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if not json_str_match: raise ValueError("Response does not contain a valid JSON object.")
         json_str = json_str_match.group(0)
@@ -230,7 +217,7 @@ def find_and_generate_offer(user_wishes):
         return ranked_ids, matched_salon_info, first_offer_message
     except Exception as e:
         print(f"Geminiからの応答解析エラー: {e}")
-        print(f"Geminiからの元テキスト: {response_text}")
+        print(f"Geminiからの元テキスト: {response.text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
 
 def create_salon_flex_message(salon, offer_text):
