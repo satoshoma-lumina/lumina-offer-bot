@@ -96,9 +96,12 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     # ★★★★★ ここからが最終修正 ★★★★★
-    # 本来のシンプルなAPIキーによる認証方法に戻します
+    # 通信方法を 'rest' に指定することで、gspread との競合を完全に回避します
     try:
-        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+        genai.configure(
+            api_key=os.environ.get('GEMINI_API_KEY'),
+            transport="rest"  # gRPC競合を避けるための最終手段
+        )
         model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         print(f"Gemini APIの初期化エラー: {e}")
@@ -294,7 +297,7 @@ def submit_schedule():
             subject = "【LUMINAオファー】面談日程の新規登録がありました"
             body = f"""
             以下の内容で、ユーザーから面談希望日時の登録がありました。
-            速やかにサロンとの日程調整を開始を開始してください。
+            速やかにサロンとの日程調整を開始してください。
 
             ■ ユーザーID: {user_id}
             ■ サロンID: {salon_id}
