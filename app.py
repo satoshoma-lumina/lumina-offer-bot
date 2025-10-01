@@ -34,11 +34,7 @@ SATO_EMAIL = "sato@lumina-beauty.co.jp"
 # --- 認証設定 ---
 creds_path = '/etc/secrets/google_credentials.json'
 
-# ★★★★★ ここからが最終修正 ★★★★★
-# gspreadのグローバル初期化を完全に削除し、ライブラリ間の競合を根本から断ちます。
-# ★★★★★ ここまでが最終修正 ★★★★★
-
-
+# gspreadのグローバル初期化を削除し、ライブラリ競合を根本から断つ
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
@@ -74,7 +70,7 @@ def process_and_send_offer(user_id, user_wishes):
                 offer_text = result_or_reason
                 today_str = datetime.today().strftime('%Y/%m/%d')
                 
-                # この関数内でgspreadを初期化して、オファー情報を書き込みます
+                # この関数内でgspreadを初期化してオファー情報を書き込む
                 try:
                     gc = gspread.service_account(filename=creds_path)
                     offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
@@ -109,6 +105,7 @@ def find_and_generate_offer(user_wishes):
         model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         print(f"Gemini APIの初期化エラー: {e}")
+        traceback.print_exc()
         return None, None, "AIサービスの初期化に失敗しました。"
 
     # STEP 2: 次にgspreadを初期化してスプレッドシートを読み込む
