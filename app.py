@@ -8,9 +8,7 @@ from datetime import datetime
 import traceback
 import pkg_resources
 
-# ★★★★★ 最終修正で追加 ★★★★★
 from google.oauth2 import service_account
-# ★★★★★ ここまで ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -100,17 +98,14 @@ def process_and_send_offer(user_id, user_wishes):
 
 def find_and_generate_offer(user_wishes):
     # ★★★★★ ここからが最終修正 ★★★★★
-    # APIキーの代わりに、信頼性の高いサービスアカウント認証を使用します
+    # 信頼性の高いサービスアカウント認証を使用し、最新ライブラリのデフォルト動作に任せます
     try:
         credentials = service_account.Credentials.from_service_account_file(
             creds_path,
             scopes=['https://www.googleapis.com/auth/generative-language']
         )
-        genai.configure(
-            credentials=credentials,
-            transport="rest"  # 念のため通信競合を回避
-        )
-        model = genai.GenerativeModel('gemini-pro')
+        genai.configure(credentials=credentials)
+        model = genai.GenerativeModel('gemini-1.5-flash')
     except Exception as e:
         print(f"Gemini APIの初期化エラー: {e}")
         traceback.print_exc()
