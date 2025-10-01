@@ -95,18 +95,17 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # ★★★★★ ここからが最終修正 ★★★★★
-    # 通信方法を 'rest' に指定することで、gspread との競合を完全に回避します
     try:
         genai.configure(
             api_key=os.environ.get('GEMINI_API_KEY'),
-            transport="rest"  # gRPC競合を避けるための最終手段
+            transport="rest"
         )
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # ★★★★★ ここが最終修正点 ★★★★★
+        model = genai.GenerativeModel('gemini-pro')
+        # ★★★★★ ここまで ★★★★★
     except Exception as e:
         print(f"Gemini APIの初期化エラー: {e}")
         return None, None, "AIサービスの初期化に失敗しました。"
-    # ★★★★★ ここまでが最終修正 ★★★★★
 
     all_salons_data = salon_master_sheet.get_all_records()
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
