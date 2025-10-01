@@ -35,13 +35,7 @@ SATO_EMAIL = "sato@lumina-beauty.co.jp"
 creds_path = '/etc/secrets/google_credentials.json'
 
 # ★★★★★ ここからが最終修正 ★★★★★
-# gspreadのグローバル初期化を完全に削除します。
-# これにより、起動時のライブラリ競合を防ぎます。
-# client = gspread.service_account(filename=creds_path)
-# spreadsheet = client.open("店舗マスタ_LUMINA Offer用")
-# user_management_sheet = spreadsheet.worksheet("ユーザー管理")
-# offer_management_sheet = spreadsheet.worksheet("オファー管理")
-# salon_master_sheet = spreadsheet.worksheet("店舗マスタ")
+# gspreadのグローバル初期化を完全に削除し、ライブラリ間の競合を根本から断ちます。
 # ★★★★★ ここまでが最終修正 ★★★★★
 
 
@@ -80,8 +74,7 @@ def process_and_send_offer(user_id, user_wishes):
                 offer_text = result_or_reason
                 today_str = datetime.today().strftime('%Y/%m/%d')
                 
-                # ★★★★★ ここからが最終修正 ★★★★★
-                # この関数内でgspreadを再度初期化して、オファー情報を書き込みます
+                # この関数内でgspreadを初期化して、オファー情報を書き込みます
                 try:
                     gc = gspread.service_account(filename=creds_path)
                     offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
@@ -92,7 +85,6 @@ def process_and_send_offer(user_id, user_wishes):
                     offer_management_sheet.append_row(new_offer_row, value_input_option='USER_ENTERED')
                 except Exception as e:
                     print(f"オファー管理シートへの書き込み中にエラー: {e}")
-                # ★★★★★ ここまでが最終修正 ★★★★★
 
                 flex_container = FlexContainer.from_dict(create_salon_flex_message(matched_salon, offer_text))
                 messages = [FlexMessage(alt_text=f"{matched_salon['店舗名']}からのオファー", contents=flex_container)]
@@ -107,9 +99,7 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # ★★★★★ ここからが最終修正 ★★★★★
     # STEP 1: 最初にGemini APIの処理を完全に終わらせる
-    # ----------------------------------------------------
     try:
         # 通信方法を 'rest' に指定し、gRPC競合を完全に回避
         genai.configure(
@@ -122,7 +112,6 @@ def find_and_generate_offer(user_wishes):
         return None, None, "AIサービスの初期化に失敗しました。"
 
     # STEP 2: 次にgspreadを初期化してスプレッドシートを読み込む
-    # ----------------------------------------------------
     try:
         gc = gspread.service_account(filename=creds_path)
         salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
@@ -132,7 +121,6 @@ def find_and_generate_offer(user_wishes):
     except Exception as e:
         print(f"スプレッドシート読み込みエラー: {e}")
         return None, None, "サロン情報の読み込みに失敗しました。"
-    # ★★★★★ ここまでが最終修正 ★★★★★
 
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
 
@@ -300,10 +288,8 @@ def submit_schedule():
     salon_id = data.get('salonId')
 
     try:
-        # ★★★★★ ここからが最終修正 ★★★★★
         gc = gspread.service_account(filename=creds_path)
         offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
-        # ★★★★★ ここまでが最終修正 ★★★★★
         
         user_cells = offer_management_sheet.findall(user_id, in_column=1)
         row_to_update = -1
@@ -352,10 +338,8 @@ def submit_questionnaire():
     user_id = data.get('userId')
 
     try:
-        # ★★★★★ ここからが最終修正 ★★★★★
         gc = gspread.service_account(filename=creds_path)
         user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
-        # ★★★★★ ここまでが最終修正 ★★★★★
         
         cell = user_management_sheet.find(user_id, in_column=1)
         if cell:
@@ -418,10 +402,8 @@ def trigger_offer():
             user_wishes['age'] = '' # 不正な日付形式の場合は空にする
 
     try:
-        # ★★★★★ ここからが最終修正 ★★★★★
         gc = gspread.service_account(filename=creds_path)
         user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
-        # ★★★★★ ここまでが最終修正 ★★★★★
 
         user_headers = user_management_sheet.row_values(1)
 
