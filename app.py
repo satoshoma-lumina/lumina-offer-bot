@@ -2,11 +2,11 @@ import os
 import json
 import gspread
 import pandas as pd
-import google.generativeai as genai
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
+import requests # ★★★★★ 最終修正で追加 ★★★★★
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -38,105 +38,26 @@ creds_path = '/etc/secrets/delta-wonder-471708-u1-93f8d5bbdf1c.json'
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 
-# ( ... 中略 ... )
+def send_notification_email(subject, body):
+    from_email = os.environ.get('MAIL_USERNAME')
+    api_key = os.environ.get('SENDGRID_API_KEY')
 
-@app.route("/trigger-offer", methods=['POST'])
-def trigger_offer():
-    # ★★★★★ ここからが最終診断コード ★★★★★
-    print("\n\n--- 最終診断テスト開始 ---")
+    if not from_email or not api_key:
+        print("メール送信用の環境変数が設定されていません。")
+        return
+
+    message = Mail(
+        from_email=from_email,
+        to_emails=SATO_EMAIL,
+        subject=subject,
+        html_content=body.replace('\n', '<br>'))
     try:
-        # 1. サーバーの現在時刻を確認
-        server_time_utc = datetime.utcnow()
-        print(f"✅ Renderサーバーの現在時刻 (UTC): {server_time_utc.strftime('%Y-%m-%d %H:%M:%S')}")
-
-        # 2. 認証情報ファイルの中身を確認
-        print(f"🔍 認証ファイルを '{creds_path}' から読み込みます...")
-        with open(creds_path, 'r') as f:
-            creds_content = f.read()
-        
-        # 3. JSONとして有効か確認
-        creds_json = json.loads(creds_content)
-        print("✅ ファイルは有効なJSON形式です。")
-        
-        # 4. 中身の一部をログに出力して破損がないか確認
-        project_id = creds_json.get('project_id')
-        private_key = creds_json.get('private_key', '')
-        print(f"✅ project_id: {project_id}")
-        print(f"✅ private_key の先頭15文字: {private_key[:15]}")
-        print(f"✅ private_key の末尾15文字: {private_key[-15:]}")
-        print("--- 診断項目は正常に見えます。これからスプレッドシートへの接続を試みます... ---")
-
-    except FileNotFoundError:
-        print(f"❌ 致命的エラー: 認証ファイル '{creds_path}' が見つかりません。RenderのSecret Filesの設定を確認してください。")
-        return jsonify({"status": "error", "message": "Credential file not found"}), 500
-    except json.JSONDecodeError:
-        print("❌ 致命的エラー: 認証ファイルの中身がJSONとして破損しています。RenderのSecret Filesに貼り付けた内容を再確認してください。")
-        return jsonify({"status": "error", "message": "Credential file is corrupted"}), 500
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+        print(f"メール送信成功: Status Code {response.status_code}")
     except Exception as e:
-        print(f"❌ 予期せぬ診断エラー: {e}")
-        return jsonify({"status": "error", "message": f"Unexpected diagnostic error: {e}"}), 500
-    # ★★★★★ ここまでが最終診断コード ★★★★★
+        print(f"メール送信エラー: {e}")
 
-
-    data = request.get_json()
-    if not data: return jsonify({"status": "error", "message": "No data provided"}), 400
-    user_id = data.get('userId')
-    user_wishes = data.get('wishes')
-    if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
-
-    try:
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            welcome_message = ( "ご登録いただき、誠にありがとうございます！\n" "LUMINA Offerが、あなたにプロフィールを拝見してピッタリな『好待遇サロンの公認オファー』を、このLINEアカウントを通じてご連絡いたします。\n" "楽しみにお待ちください！" )
-            line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
-    except Exception as e:
-        print(f"ウェルカムメッセージの送信エラー: {e}")
-
-    if 'birthdate' in user_wishes and user_wishes['birthdate']:
-        try:
-            age = get_age_from_birthdate(user_wishes.get('birthdate'))
-            user_wishes['age'] = f"{ (age // 10) * 10 }代"
-        except (ValueError, TypeError):
-            user_wishes['age'] = '' # 不正な日付形式の場合は空にする
-
-    try:
-        gc = gspread.service_account(filename=creds_path)
-        user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
-
-        user_headers = user_management_sheet.row_values(1)
-
-        user_row_dict = {
-            "ユーザーID": user_id, "登録日": datetime.today().strftime('%Y/%m/%d'), "ステータス": 'オファー中',
-            "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'),
-            "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'),
-            "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'),
-            "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'),
-            "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license')
-        }
-
-        profile_headers = user_headers[:16]
-        profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
-
-        cell = user_management_sheet.find(user_id, in_column=1)
-        if cell:
-            range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
-            user_management_sheet.update(range_to_update, [profile_row_values])
-        else:
-            full_row = profile_row_values + [''] * 8
-            user_management_sheet.append_row(full_row)
-
-    except Exception as e:
-        print(f"ユーザー管理シートへの書き込みエラー: {e}")
-        # エラーが発生しても、AI処理に進むためにprocess_and_send_offerを呼び出す
-        process_and_send_offer(user_id, user_wishes)
-        return jsonify({"status": "success_with_db_error", "message": "Offer task processed, but failed to write to user sheet"})
-
-    process_and_send_offer(user_id, user_wishes)
-
-    return jsonify({"status": "success", "message": "Offer task processed immediately"})
-
-# ( ... 以降のコードは、前回提供した「delta-wonder-...json 専用版」と全く同じです ... )
-# ( ... 省略 ... )
 def process_and_send_offer(user_id, user_wishes):
     try:
         ranked_ids, matched_salon, result_or_reason = find_and_generate_offer(user_wishes)
@@ -172,31 +93,16 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # STEP 1: 最初にGemini APIの処理を完全に終わらせる
-    try:
-        genai.configure(
-            api_key=os.environ.get('GEMINI_API_KEY'),
-            transport="rest"
-        )
-        model = genai.GenerativeModel('gemini-1.5-flash')
-    except Exception as e:
-        print(f"Gemini APIの初期化エラー: {e}")
-        traceback.print_exc()
-        return None, None, "AIサービスの初期化に失敗しました。"
-
-    # STEP 2: 次にgspreadを初期化してスプレッドシートを読み込む
     try:
         gc = gspread.service_account(filename=creds_path)
         salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
         all_salons_data = salon_master_sheet.get_all_records()
-    except gspread.exceptions.SpreadsheetNotFound:
-        return None, None, "スプレッドシート「店舗マスタ_LUMINA Offer用」が見つかりません。"
     except Exception as e:
         print(f"スプレッドシート読み込みエラー: {e}")
+        traceback.print_exc()
         return None, None, "サロン情報の読み込みに失敗しました。"
 
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
-
     salons_df = pd.DataFrame(all_salons_data)
 
     try:
@@ -246,7 +152,7 @@ def find_and_generate_offer(user_wishes):
 
     salons_json_string = salons_to_consider.to_json(orient='records', force_ascii=False)
 
-    prompt = f"""
+    prompt_text = f"""
     あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
     # 候補者プロフィール:
     {json.dumps(user_wishes, ensure_ascii=False)}
@@ -270,10 +176,42 @@ def find_and_generate_offer(user_wishes):
     }}
     """
 
-    response = model.generate_content(prompt)
+    # ★★★★★ ここからが最終修正 ★★★★★
+    # google-generativeaiライブラリをバイパスし、直接REST APIを呼び出します
+    try:
+        api_key = os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            return None, None, "GEMINI_API_KEYが設定されていません。"
+
+        # 安定している v1 のエンドポイントと、gemini-proモデルを直接指定
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
+
+        headers = {"Content-Type": "application/json"}
+        
+        data = {
+            "contents": [{
+                "parts": [{
+                    "text": prompt_text
+                }]
+            }]
+        }
+
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+
+        response_json = response.json()
+        response_text = response_json['candidates'][0]['content']['parts'][0]['text']
+
+    except requests.exceptions.RequestException as e:
+        print(f"Gemini APIへの直接リクエストエラー: {e}")
+        return None, None, f"AIサービスへの接続に失敗しました: {e}"
+    except (KeyError, IndexError) as e:
+        print(f"Gemini APIからの応答形式が予期せぬものです: {e}")
+        print(f"受信したJSON: {response_json}")
+        return None, None, "AIからの応答形式が正しくありません。"
+    # ★★★★★ ここまでが最終修正 ★★★★★
 
     try:
-        response_text = response.text
         json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if not json_str_match: raise ValueError("Response does not contain a valid JSON object.")
         json_str = json_str_match.group(0)
@@ -294,7 +232,7 @@ def find_and_generate_offer(user_wishes):
         return ranked_ids, matched_salon_info, first_offer_message
     except Exception as e:
         print(f"Geminiからの応答解析エラー: {e}")
-        print(f"Geminiからの元テキスト: {response.text}")
+        print(f"Geminiからの元テキスト: {response_text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
 
 def create_salon_flex_message(salon, offer_text):
@@ -450,6 +388,64 @@ def submit_questionnaire():
     except Exception as e:
         print(f"アンケート更新エラー: {e}")
         return jsonify({"status": "error", "message": "Failed to update questionnaire"}), 500
+
+@app.route("/trigger-offer", methods=['POST'])
+def trigger_offer():
+    data = request.get_json()
+    if not data: return jsonify({"status": "error", "message": "No data provided"}), 400
+    user_id = data.get('userId')
+    user_wishes = data.get('wishes')
+    if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
+
+    try:
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            welcome_message = ( "ご登録いただき、誠にありがとうございます！\n" "LUMINA Offerが、あなたにプロフィールを拝見してピッタリな『好待遇サロンの公認オファー』を、このLINEアカウントを通じてご連絡いたします。\n" "楽しみにお待ちください！" )
+            line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
+    except Exception as e:
+        print(f"ウェルカムメッセージの送信エラー: {e}")
+
+    if 'birthdate' in user_wishes and user_wishes['birthdate']:
+        try:
+            age = get_age_from_birthdate(user_wishes.get('birthdate'))
+            user_wishes['age'] = f"{ (age // 10) * 10 }代"
+        except (ValueError, TypeError):
+            user_wishes['age'] = '' # 不正な日付形式の場合は空にする
+
+    try:
+        gc = gspread.service_account(filename=creds_path)
+        user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
+
+        user_headers = user_management_sheet.row_values(1)
+
+        user_row_dict = {
+            "ユーザーID": user_id, "登録日": datetime.today().strftime('%Y/%m/%d'), "ステータス": 'オファー中',
+            "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'),
+            "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'),
+            "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'),
+            "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'),
+            "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license')
+        }
+
+        profile_headers = user_headers[:16]
+        profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
+
+        cell = user_management_sheet.find(user_id, in_column=1)
+        if cell:
+            range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
+            user_management_sheet.update(range_to_update, [profile_row_values])
+        else:
+            full_row = profile_row_values + [''] * 8
+            user_management_sheet.append_row(full_row)
+
+    except Exception as e:
+        print(f"ユーザー管理シートへの書き込みエラー: {e}")
+        process_and_send_offer(user_id, user_wishes)
+        return jsonify({"status": "success_with_db_error", "message": "Offer task processed, but failed to write to user sheet"})
+
+    process_and_send_offer(user_id, user_wishes)
+
+    return jsonify({"status": "success", "message": "Offer task processed immediately"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
