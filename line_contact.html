@@ -12,12 +12,19 @@
         .step-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
         .step-box h2 { font-size: 18px; margin-top: 0; color: #333; }
         textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; resize: vertical; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
+        button, a.btn-action { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; box-sizing: border-box; }
         .btn-action { background-color: #06C755; color: white; margin-bottom: 10px; }
         .btn-submit { background-color: #FF6B6B; color: white; margin-top: 10px; }
         button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; }
         #error { color: red; }
+        /* ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼ */
+        a.btn-action {
+            display: block;
+            text-decoration: none;
+            line-height: 1.5;
+        }
+        /* ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -28,7 +35,7 @@
         <form id="lineContactForm">
             <div class="step-box">
                 <h2>ステップ1：友だち追加URLをコピー</h2>
-                <button type="button" id="copy-url-button" class="btn-action">LINEの招待画面を開く</button>
+                <a href="https://line.me/R/nv/invite" class="btn-action" role="button">LINEの招待画面を開く</a>
                 <small>ボタンを押して表示された画面で「招待」→「シェア」→「コピー」を選択してください。</small>
             </div>
 
@@ -45,8 +52,7 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
-            // Step 5でこのIDを書き換えます
-            const liffId = "2008066763-Rv0z80wl"; 
+            const liffId = "YOUR_NEW_LIFF_ID_FOR_LINE_CONTACT"; // ご自身のLIFF IDに書き換えてください
             const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-line-contact";
 
             try {
@@ -56,18 +62,14 @@
                 const profile = await liff.getProfile();
                 const userId = profile.userId;
 
-                const copyUrlButton = document.getElementById('copy-url-button');
                 const form = document.getElementById('lineContactForm');
                 const submitButton = document.getElementById('submit-button');
                 const loadingDiv = document.getElementById('loading');
                 const errorDiv = document.getElementById('error');
                 
-                copyUrlButton.addEventListener('click', () => {
-                    liff.openWindow({
-                        url: 'https://line.me/R/nv/invite',
-                        external: true
-                    });
-                });
+                // ▼▼▼▼▼ ここが修正点 (addEventListenerを削除) ▼▼▼▼▼
+                // copyUrlButtonのクリックイベントリスナーは不要になりました
+                // ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
 
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
