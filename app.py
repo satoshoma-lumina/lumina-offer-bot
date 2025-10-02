@@ -31,8 +31,10 @@ QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
-# RenderのSecret File Mount Path [cite: 17]
-creds_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '/etc/secrets/google_credentials.json')
+# ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
+# RenderのSecret Fileのパスを正しいファイル名に修正
+creds_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '/etc/secrets/delta-wonder-471708-u1-93f8d5bbdf1c.json')
+# ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
 
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
@@ -179,7 +181,7 @@ def find_and_generate_offer(user_wishes):
         if not api_key:
             return None, None, "GEMINI_API_KEYが設定されていません。"
 
-        # 利用可能なモデル名を指定 [cite: 81]
+        # 利用可能なモデル名を指定
         model_name = "gemini-1.5-flash-latest" # 例: gemini-1.5-flash-latestなど
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
@@ -304,8 +306,7 @@ def submit_schedule():
                 break
 
         if row_to_update != -1:
-            # ▼▼▼▼▼ ここからが修正点 ▼▼▼▼▼
-            interview_location = data.get('interviewLocation', '') # なければ空文字
+            interview_location = data.get('interviewLocation', '') 
 
             update_values = [
                 '日程調整中',
@@ -313,10 +314,9 @@ def submit_schedule():
                 data.get('date1', ''), data.get('startTime1', ''), data.get('endTime1', ''),
                 data.get('date2', ''), data.get('startTime2', ''), data.get('endTime2', ''),
                 data.get('date3', ''), data.get('startTime3', ''), data.get('endTime3', ''),
-                interview_location # 面談希望場所をリストの最後に追加
+                interview_location
             ]
             
-            # Google Sheetsの更新範囲を N列 から O列 に拡大
             offer_management_sheet.update(f'D{row_to_update}:O{row_to_update}', [update_values])
 
             subject = "【LUMINAオファー】面談日程の新規登録がありました"
@@ -332,7 +332,6 @@ def submit_schedule():
                 ■ 第2希望: {data.get('date2', '')} {data.get('startTime2', '')} 〜 {data.get('endTime2', '')}
                 ■ 第3希望: {data.get('date3', '')} {data.get('startTime3', '')} 〜 {data.get('endTime3', '')}
             """
-            # ▲▲▲▲▲ ここまでが修正点 ▲▲▲▲▲
             
             send_notification_email(subject, body)
 
@@ -358,14 +357,12 @@ def submit_questionnaire():
         if cell:
             row_to_update = cell.row
             
-            # Google Sheetsのスキーマに合わせて更新する値を作成 [cite: 31]
             update_values = [
                 data.get('q1_area'), data.get('q2_job_changes'), data.get('q3_current_employment'),
                 data.get('q4_experience_years'), data.get('q5_desired_employment'),
                 data.get('q6_priorities'), data.get('q7_improvement_point'),
                 data.get('q8_ideal_beautician')
             ]
-            # 更新範囲をQ列からX列に指定 [cite: 31]
             user_management_sheet.update(f'Q{row_to_update}:X{row_to_update}', [update_values])
 
             user_name = user_management_sheet.cell(row_to_update, 4).value
@@ -431,7 +428,6 @@ def trigger_offer():
             "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license')
         }
         
-        # プロフィール部分のみのヘッダーリストを作成
         profile_headers = user_headers[:16] # A-P列
         profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
 
@@ -440,8 +436,7 @@ def trigger_offer():
             range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
             user_management_sheet.update(range_to_update, [profile_row_values])
         else:
-            # スキーマの全長に合わせて空文字を追加 [cite: 31]
-            full_row = profile_row_values + [''] * 8 # Q-X列は空
+            full_row = profile_row_values + [''] * 8 
             user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
             
     except Exception as e:
