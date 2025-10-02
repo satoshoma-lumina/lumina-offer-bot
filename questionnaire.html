@@ -18,7 +18,7 @@
         .checkbox-group label, .radio-group label { font-weight: normal; display: block; margin-bottom: 10px; }
         .checkbox-group input, .radio-group input { margin-right: 8px; }
         button { width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
-        button:disabled { background-color: #ccc; } /* ボタン無効化のデザインを追加 */
+        button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
     </style>
 </head>
@@ -124,7 +124,7 @@
         </form>
         <div id="loading">送信中...</div>
         <div id="error"></div>
-        </div>
+    </div>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
@@ -142,14 +142,17 @@
                 const loadingDiv = document.getElementById('loading');
                 const errorDiv = document.getElementById('error');
                 
-                // チェックボックスを3つまでに制限する機能（元のコードから維持）
                 const checkboxes = document.querySelectorAll('input[name="q6_priorities"]');
                 checkboxes.forEach(checkbox => {
                     checkbox.addEventListener('change', () => {
                         const checkedCount = document.querySelectorAll('input[name="q6_priorities"]:checked').length;
                         if (checkedCount > 3) {
-                            alert('3つまで選択可能です。');
+                            // alert() はLIFFでは表示されないことがあるため、エラーメッセージ表示に変更
+                            errorDiv.textContent = '選択肢は3つまでです。';
+                            errorDiv.style.display = 'block';
                             checkbox.checked = false;
+                            // ユーザーに分かりやすいように、少し時間をおいてメッセージを消す
+                            setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
                         }
                     });
                 });
@@ -164,11 +167,9 @@
                     const formData = new FormData(form);
                     const answers = { userId };
                     
-                    // チェックボックスの値をカンマ区切りでまとめる（元のコードから維持）
                     const priorities = Array.from(formData.getAll('q6_priorities')).join(',');
                     answers['q6_priorities'] = priorities;
                     
-                    // 他のフォームデータをanswersオブジェクトに格納する（元のコードから維持）
                     for (const [key, value] of formData.entries()) {
                         if (key !== 'q6_priorities') {
                             answers[key] = value;
@@ -182,27 +183,21 @@
                             body: JSON.stringify(answers)
                         });
                         
-                        // ★★★★★ ここからが新しいロジック ★★★★★
+                        // ★★★★★ ここが修正点 ★★★★★
+                        // 新しいフローに合わせて、送信が成功したらLIFFを閉じるだけにする
                         if (response.ok) {
-                            const result = await response.json();
-                            // サーバーから次の画面のURLを受け取り、自動で遷移する
-                            if (result.nextLiffUrl) {
-                                window.location.href = result.nextLiffUrl;
-                            } else {
-                                // 万が一URLがなかった場合はウィンドウを閉じる
-                                liff.closeWindow();
-                            }
+                            liff.closeWindow();
                         } else {
                             const errorData = await response.json();
                             throw new Error(errorData.message || 'サーバーでエラーが発生しました。');
                         }
-                        // ★★★★★ 新しいロジックここまで ★★★★★
+                        // ★★★★★ 修正点ここまで ★★★★★
 
                     } catch (error) {
                         loadingDiv.style.display = 'none';
                         errorDiv.textContent = `送信に失敗しました: ${error.message}`;
                         errorDiv.style.display = 'block';
-                        submitButton.disabled = false; // エラー時はボタンを再度有効化
+                        submitButton.disabled = false;
                     }
                 });
 

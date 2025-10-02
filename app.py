@@ -28,7 +28,7 @@ CORS(app)
 # --- 定数定義 ---
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
-# ★★★★★ ここに、LINE連絡先交換用に新しく取得したLIFF IDを設定してください ★★★★★
+# ★★★★★ LINE連絡先交換用に新しく取得したLIFF IDを設定してください ★★★★★
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl" # 例: "2008066763-AbcDEfG"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
@@ -308,6 +308,7 @@ def submit_schedule():
         print(f"スプレッドシート更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update spreadsheet"}), 500
 
+# ▼▼▼▼▼ ここからが修正点① ▼▼▼▼▼
 @app.route("/submit-questionnaire", methods=['POST'])
 def submit_questionnaire():
     data = request.get_json()
@@ -324,14 +325,28 @@ def submit_questionnaire():
             subject = f"【LUMINAオファー】{user_name}様からアンケート回答がありました"
             body = f"{user_name}様（ユーザーID: {user_id}）から、面談前アンケートへの回答がありました。\n内容を確認し、面談の準備を進めてください。\n\n---\n1. お住まいエリア: {data.get('q1_area')}\n2. 転職回数: {data.get('q2_job_changes')}\n3. 現雇用形態: {data.get('q3_current_employment')}\n4. 現役職経験年数: {data.get('q4_experience_years')}\n5. 希望雇用形態: {data.get('q5_desired_employment')}\n6. サロン選びの重視点: {data.get('q6_priorities')}\n7. 現職場の改善点: {data.get('q7_improvement_point')}\n8. 理想の美容師像: {data.get('q8_ideal_beautician')}"
             send_notification_email(subject, body)
-            next_liff_url = f"https://liff.line.me/{LINE_CONTACT_LIFF_ID}"
-            return jsonify({"status": "success", "message": "Questionnaire submitted successfully", "nextLiffUrl": next_liff_url})
+            
+            # アンケート回答後にプッシュメッセージを送信
+            try:
+                with ApiClient(configuration) as api_client:
+                    line_bot_api = MessagingApi(api_client)
+                    liff_url_for_contact = f"https://liff.line.me/{LINE_CONTACT_LIFF_ID}"
+                    flex_message_body = {"type": "bubble","body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": "アンケートへのご回答、ありがとうございます！","weight": "bold","size": "md","wrap": True},{"type": "text","text": "最後に、サロン担当者があなたに直接連絡できるよう、ご自身のLINE連絡先をご登録ください。","margin": "md","size": "sm","color": "#666666","wrap": True}]},"footer": {"type": "box","layout": "vertical","spacing": "sm","contents": [{"type": "button","style": "primary","height": "sm","action": {"type": "uri","label": "LINE連絡先を登録する","uri": liff_url_for_contact},"color": "#FF6B6B"}],"flex": 0}}
+                    messages = [FlexMessage(alt_text="LINE連絡先の登録をお願いします。", contents=FlexContainer.from_dict(flex_message_body))]
+                    line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
+                    print(f"ユーザーID {user_id} に連絡先登録を促すプッシュメッセージを送信しました。")
+            except Exception as e:
+                print(f"プッシュメッセージ送信エラー: {e}")
+
+            # nextLiffUrlを返さず、単純な成功レスポンスを返す
+            return jsonify({"status": "success", "message": "Questionnaire submitted successfully"})
         else:
             return jsonify({"status": "error", "message": "User not found"}), 404
     except Exception as e:
         print(f"アンケート更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update questionnaire"}), 500
 
+# ▼▼▼▼▼ ここからが修正点② ▼▼▼▼▼
 @app.route("/submit-line-contact", methods=['POST'])
 def submit_line_contact():
     data = request.get_json()
@@ -348,6 +363,18 @@ def submit_line_contact():
             subject = f"【LUMINAオファー】{user_name}様からLINE連絡先の登録がありました"
             body = f"{user_name}様（ユーザーID: {user_id}）から、LINE連絡先の登録がありました。\nサロン担当者へ以下のURLを共有してください。\n\n<hr><b>▼ 友だち追加URL</b><br><a href=\"{line_url}\">{line_url}</a><hr>"
             send_notification_email(subject, body)
+            
+            # 連絡先登録後に完了のプッシュメッセージを送信
+            try:
+                with ApiClient(configuration) as api_client:
+                    line_bot_api = MessagingApi(api_client)
+                    confirmation_text = "ご連絡先の登録、ありがとうございました。\nサロンとの日程調整が完了しましたら、担当者から直接あなたのLINEにご連絡がありますので、もうしばらくお待ちください。"
+                    messages = [TextMessage(text=confirmation_text)]
+                    line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
+                    print(f"ユーザーID {user_id} に最終確認のプッシュメッセージを送信しました。")
+            except Exception as e:
+                print(f"プッシュメッセージ送信エラー: {e}")
+
             return jsonify({"status": "success", "message": "LINE contact submitted successfully"})
         else:
             return jsonify({"status": "error", "message": "User not found"}), 404
@@ -387,8 +414,7 @@ def trigger_offer():
             range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
             user_management_sheet.update(range_to_update, [profile_row_values])
         else:
-            # ★★★★★ Y列まで対応するため、空の列を9つに修正 ★★★★★
-            full_row = profile_row_values + [''] * 9 
+            full_row = profile_row_values + [''] * 9
             user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
     except Exception as e:
         print(f"ユーザー管理シートへの書き込みエラー: {e}"); traceback.print_exc()
