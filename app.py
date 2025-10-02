@@ -2,11 +2,11 @@ import os
 import json
 import gspread
 import pandas as pd
-import google.generativeai as genai
 import re
 from datetime import datetime
 import traceback
 import pkg_resources
+import requests
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
@@ -32,10 +32,8 @@ QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
-# プログラムが探すファイル名を、あなたのファイル名に合わせます
 creds_path = '/etc/secrets/delta-wonder-471708-u1-93f8d5bbdf1c.json'
 
-# gspreadのグローバル初期化を削除し、ライブラリ競合を根本から断つ
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
@@ -71,7 +69,6 @@ def process_and_send_offer(user_id, user_wishes):
                 offer_text = result_or_reason
                 today_str = datetime.today().strftime('%Y/%m/%d')
                 
-                # この関数内でgspreadを初期化してオファー情報を書き込む
                 try:
                     gc = gspread.service_account(filename=creds_path)
                     offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
@@ -96,32 +93,16 @@ def process_and_send_offer(user_id, user_wishes):
         traceback.print_exc()
 
 def find_and_generate_offer(user_wishes):
-    # STEP 1: 最初にGemini APIの処理を完全に終わらせる
-    try:
-        # 通信方法を 'rest' に指定し、gRPC競合を完全に回避
-        genai.configure(
-            api_key=os.environ.get('GEMINI_API_KEY'),
-            transport="rest"
-        )
-        model = genai.GenerativeModel('gemini-2.5-flash')
-    except Exception as e:
-        print(f"Gemini APIの初期化エラー: {e}")
-        traceback.print_exc()
-        return None, None, "AIサービスの初期化に失敗しました。"
-
-    # STEP 2: 次にgspreadを初期化してスプレッドシートを読み込む
     try:
         gc = gspread.service_account(filename=creds_path)
         salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
         all_salons_data = salon_master_sheet.get_all_records()
-    except gspread.exceptions.SpreadsheetNotFound:
-        return None, None, "スプレッドシート「店舗マスタ_LUMINA Offer用」が見つかりません。"
     except Exception as e:
         print(f"スプレッドシート読み込みエラー: {e}")
+        traceback.print_exc()
         return None, None, "サロン情報の読み込みに失敗しました。"
 
     if not all_salons_data: return None, None, "サロン情報が見つかりません。"
-
     salons_df = pd.DataFrame(all_salons_data)
 
     try:
@@ -171,7 +152,7 @@ def find_and_generate_offer(user_wishes):
 
     salons_json_string = salons_to_consider.to_json(orient='records', force_ascii=False)
 
-    prompt = f"""
+    prompt_text = f"""
     あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
     # 候補者プロフィール:
     {json.dumps(user_wishes, ensure_ascii=False)}
@@ -195,10 +176,42 @@ def find_and_generate_offer(user_wishes):
     }}
     """
 
-    response = model.generate_content(prompt)
+    # ★★★★★ ここからが最終修正 ★★★★★
+    try:
+        api_key = os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            return None, None, "GEMINI_API_KEYが設定されていません。"
+
+        # あなたのプロジェクトで利用可能な、最新のモデル名を指定します
+        model_name = "gemini-2.5-flash"
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={api_key}"
+
+        headers = {"Content-Type": "application/json"}
+        
+        data = {
+            "contents": [{
+                "parts": [{
+                    "text": prompt_text
+                }]
+            }]
+        }
+
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+
+        response_json = response.json()
+        response_text = response_json['candidates'][0]['content']['parts'][0]['text']
+
+    except requests.exceptions.RequestException as e:
+        print(f"Gemini APIへの直接リクエストエラー: {e}")
+        return None, None, f"AIサービスへの接続に失敗しました: {e}"
+    except (KeyError, IndexError) as e:
+        print(f"Gemini APIからの応答形式が予期せぬものです: {e}")
+        print(f"受信したJSON: {response_json}")
+        return None, None, "AIからの応答形式が正しくありません。"
+    # ★★★★★ ここまでが最終修正 ★★★★★
 
     try:
-        response_text = response.text
         json_str_match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if not json_str_match: raise ValueError("Response does not contain a valid JSON object.")
         json_str = json_str_match.group(0)
@@ -219,7 +232,7 @@ def find_and_generate_offer(user_wishes):
         return ranked_ids, matched_salon_info, first_offer_message
     except Exception as e:
         print(f"Geminiからの応答解析エラー: {e}")
-        print(f"Geminiからの元テキスト: {response.text}")
+        print(f"Geminiからの元テキスト: {response_text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
 
 def create_salon_flex_message(salon, offer_text):
@@ -304,12 +317,9 @@ def submit_schedule():
                 data['interviewMethod'],
                 data['date1'], data['startTime1'], data['endTime1'],
                 data['date2'], data['startTime2'], data['endTime2'],
-                data['date3'], data['startTime3'], data['endTime3'],
-                data.get('interviewLocation', '') # 場所データを取得
+                data['date3'], data['startTime3'], data['endTime3']
             ]
-            offer_management_sheet.update(f'D{row_to_update}:O{row_to_update}', [update_values])
-
-            location_text = f"■ 希望の面談場所: {data.get('interviewLocation', '記載なし')}" if data.get('interviewLocation') else ""
+            offer_management_sheet.update(f'D{row_to_update}:N{row_to_update}', [update_values])
 
             subject = "【LUMINAオファー】面談日程の新規登録がありました"
             body = f"""
@@ -319,7 +329,6 @@ def submit_schedule():
             ■ ユーザーID: {user_id}
             ■ サロンID: {salon_id}
             ■ 希望の面談方法: {data['interviewMethod']}
-            {location_text}
             ■ 第1希望: {data['date1']} {data['startTime1']}〜{data['endTime1']}
             ■ 第2希望: {data.get('date2', '')} {data.get('startTime2', '')}〜{data.get('endTime2', '')}
             ■ 第3希望: {data.get('date3', '')} {data.get('startTime3', '')}〜{data.get('endTime3', '')}
@@ -332,7 +341,6 @@ def submit_schedule():
             return jsonify({"status": "error", "message": "Offer not found"}), 404
     except Exception as e:
         print(f"スプレッドシート更新エラー: {e}")
-        traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update spreadsheet"}), 500
 
 @app.route("/submit-questionnaire", methods=['POST'])
