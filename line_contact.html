@@ -9,35 +9,46 @@
         .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px 30px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { text-align: center; font-size: 22px; margin-bottom: 10px;}
         p { text-align: center; margin-bottom: 25px; line-height: 1.6; }
-        .step-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
-        .step-box h2 { font-size: 18px; margin-top: 0; color: #333; }
+        .instruction-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
+        .instruction-box h2 { font-size: 18px; margin-top: 0; color: #333; }
+        .instruction-step { margin-bottom: 15px; }
+        .instruction-step img { max-width: 100%; border-radius: 5px; border: 1px solid #ddd; }
         textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; resize: vertical; }
-        button, a.btn-action { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; box-sizing: border-box; }
-        .btn-action { background-color: #06C755; color: white; margin-bottom: 10px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .btn-submit { background-color: #FF6B6B; color: white; margin-top: 10px; }
         button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; }
         #error { color: red; }
-        a.btn-action { display: block; text-decoration: none; line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>LINE連絡先の交換</h1>
-        <p>サロン担当者と直接やり取りするために、ご自身のLINE友だち追加URLを送信してください。</p>
+        <p>お手数ですが、以下の手順に沿ってご自身のLINE友だち追加URLを取得し、貼り付けて送信してください。</p>
+
+        <div class="instruction-box">
+            <h2>URLの取得手順</h2>
+            <div class="instruction-step">
+                <p>1. 一旦この画面を閉じ、LINEの「ホーム」画面右上の「友だち追加」アイコンを押します。</p>
+                <img src="https://i.imgur.com/step1_invite.png" alt="手順1の画像">
+            </div>
+            <div class="instruction-step">
+                <p>2. 「招待」をタップします。</p>
+                <img src="https://i.imgur.com/step2_invite.png" alt="手順2の画像">
+            </div>
+            <div class="instruction-step">
+                <p>3. 「SMS」を選び、宛先は誰でも良いので一人選択します。（実際には送信しません）</p>
+                <img src="https://i.imgur.com/step3_invite.png" alt="手順3の画像">
+            </div>
+             <div class="instruction-step">
+                <p>4. 表示された文章の中にあるURLの部分だけを長押ししてコピーし、この画面に戻ってきてください。</p>
+                <img src="https://i.imgur.com/step4_invite.png" alt="手順4の画像">
+            </div>
+        </div>
 
         <form id="lineContactForm">
-            <div class="step-box">
-                <h2>ステップ1：友だち追加URLをコピー</h2>
-                <a href="https://line.me/R/nv/invite" target="_blank" rel="noopener noreferrer" class="btn-action" role="button">LINEの招待画面を開く</a>
-                <small>ボタンを押して表示された画面で「招待」→「シェア」→「コピー」を選択してください。</small>
-            </div>
-
-            <div class="step-box">
-                <h2>ステップ2：URLを貼り付けて送信</h2>
-                <textarea id="line_url" name="line_url" placeholder="ここにコピーしたURLを貼り付けてください" required></textarea>
-                <button type="submit" id="submit-button" class="btn-submit">この内容で送信する</button>
-            </div>
+            <textarea id="line_url" name="line_url" placeholder="ここにコピーしたURLを貼り付けてください" required></textarea>
+            <button type="submit" id="submit-button" class="btn-submit">この内容で送信する</button>
         </form>
         <div id="loading">送信中...</div>
         <div id="error"></div>
@@ -46,8 +57,7 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
-            // ★★★★★ ご自身のLIFF IDに書き換えるのを忘れないでください ★★★★★
-            const liffId = "YOUR_NEW_LIFF_ID_FOR_LINE_CONTACT"; 
+            const liffId = "YOUR_NEW_LIFF_ID_FOR_LINE_CONTACT"; // ご自身のLIFF IDに書き換えてください
             const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-line-contact";
 
             try {
