@@ -28,8 +28,7 @@ CORS(app)
 # --- 定数定義 ---
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
-# ★★★★★ LINE連絡先交換用に新しく取得したLIFF IDを設定してください ★★★★★
-LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl" # 例: "2008066763-AbcDEfG"
+LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
@@ -308,7 +307,6 @@ def submit_schedule():
         print(f"スプレッドシート更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update spreadsheet"}), 500
 
-# ▼▼▼▼▼ ここからが修正点① ▼▼▼▼▼
 @app.route("/submit-questionnaire", methods=['POST'])
 def submit_questionnaire():
     data = request.get_json()
@@ -326,7 +324,6 @@ def submit_questionnaire():
             body = f"{user_name}様（ユーザーID: {user_id}）から、面談前アンケートへの回答がありました。\n内容を確認し、面談の準備を進めてください。\n\n---\n1. お住まいエリア: {data.get('q1_area')}\n2. 転職回数: {data.get('q2_job_changes')}\n3. 現雇用形態: {data.get('q3_current_employment')}\n4. 現役職経験年数: {data.get('q4_experience_years')}\n5. 希望雇用形態: {data.get('q5_desired_employment')}\n6. サロン選びの重視点: {data.get('q6_priorities')}\n7. 現職場の改善点: {data.get('q7_improvement_point')}\n8. 理想の美容師像: {data.get('q8_ideal_beautician')}"
             send_notification_email(subject, body)
             
-            # アンケート回答後にプッシュメッセージを送信
             try:
                 with ApiClient(configuration) as api_client:
                     line_bot_api = MessagingApi(api_client)
@@ -338,7 +335,6 @@ def submit_questionnaire():
             except Exception as e:
                 print(f"プッシュメッセージ送信エラー: {e}")
 
-            # nextLiffUrlを返さず、単純な成功レスポンスを返す
             return jsonify({"status": "success", "message": "Questionnaire submitted successfully"})
         else:
             return jsonify({"status": "error", "message": "User not found"}), 404
@@ -346,7 +342,6 @@ def submit_questionnaire():
         print(f"アンケート更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update questionnaire"}), 500
 
-# ▼▼▼▼▼ ここからが修正点② ▼▼▼▼▼
 @app.route("/submit-line-contact", methods=['POST'])
 def submit_line_contact():
     data = request.get_json()
@@ -364,7 +359,6 @@ def submit_line_contact():
             body = f"{user_name}様（ユーザーID: {user_id}）から、LINE連絡先の登録がありました。\nサロン担当者へ以下のURLを共有してください。\n\n<hr><b>▼ 友だち追加URL</b><br><a href=\"{line_url}\">{line_url}</a><hr>"
             send_notification_email(subject, body)
             
-            # 連絡先登録後に完了のプッシュメッセージを送信
             try:
                 with ApiClient(configuration) as api_client:
                     line_bot_api = MessagingApi(api_client)
