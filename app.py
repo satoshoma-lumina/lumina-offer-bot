@@ -180,7 +180,7 @@ def find_and_generate_offer(user_wishes):
 
         # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
         # Geminiのモデル名を指定されたものに変更
-        model_name = "gemini-2.5-Flash"
+        model_name = "gemini-2.5-flash"
         # ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
