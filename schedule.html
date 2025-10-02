@@ -3,163 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>サロンとお話のご予約</title>
+    <title>面談日程の調整</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; font-size: 22px; margin-bottom: 10px;}
-        p { text-align: center; margin-bottom: 25px; line-height: 1.6; }
+        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #FF6B6B; font-size: 1.5em; text-align: center; }
         .form-group { margin-bottom: 20px; }
-        .form-group h2 { font-size: 16px; border-bottom: 2px solid #FF6B6B; padding-bottom: 5px; margin-bottom: 15px; }
-        .radio-group label { display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; }
-        .radio-group input[type="radio"] { margin-right: 10px; }
-        .date-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
-        .date-group strong { display: block; margin-bottom: 10px; }
-        .time-inputs { display: flex; align-items: center; gap: 10px; }
-        .time-inputs span { font-weight: bold; }
-        input[type="date"], select {
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; background-color: #fff;
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="date"], input[type="time"], input[type="text"], select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;
         }
+        .time-group { display: flex; gap: 10px; }
+        .time-group > div { flex: 1; }
         button {
-            width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px;
+            width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 4px; font-size: 1.1em; cursor: pointer;
+            transition: background-color 0.3s;
         }
-        #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
+        button:hover { background-color: #e05a5a; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        #loading, #error, #success { text-align: center; padding: 20px; display: none; }
+        #locationField {
+            transition: all 0.5s ease-in-out;
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>サロンとお話のご予約</h1>
-        <p>カジュアル面談の日程を調整します。</p>
-        
-        <form id="scheduleForm">
+
+<div class="container" id="formContainer">
+    <h1>面談日程の調整</h1>
+    <form id="scheduleForm">
+        <div class="form-group">
+            <label for="interviewMethod">希望の面談方法</label>
+            <select id="interviewMethod" name="interviewMethod" required onchange="checkInterviewMethod()">
+                <option value="">選択してください</option>
+                <option value="オンライン">オンライン</option>
+                <option value="カフェで話す">カフェで話す</option>
+                <option value="サロン見学">サロン見学</option>
+            </select>
+        </div>
+
+        <div id="locationField">
             <div class="form-group">
-                <h2>ご希望のお話の形をお選びください</h2>
-                <div class="radio-group">
-                    <label><input type="radio" name="interviewMethod" value="オンラインで話を聞く" required> 💻 オンラインで話を聞く</label>
-                    <label><input type="radio" name="interviewMethod" value="カフェなどで話を聞いてみる"> ☕️ カフェなどで話を聞いてみる</label>
-                    <label><input type="radio" name="interviewMethod" value="サロン見学で話を聞いてみる"> 💇‍♀️ サロン見学で話を聞いてみる</label>
-                </div>
+                <label for="interviewLocation">希望の場所（駅やエリア）</label>
+                <input type="text" id="interviewLocation" name="interviewLocation">
             </div>
-            <div class="form-group">
-                <h2>ご希望の候補日時を3つ入力してください</h2>
-                <div class="date-group">
-                    <strong>第1希望</strong>
-                    <input type="date" name="date1" required>
-                    <div class="time-inputs">
-                        <select name="startTime1" required></select>
-                        <span>〜</span>
-                        <select name="endTime1" required></select>
-                    </div>
-                </div>
-                <div class="date-group">
-                    <strong>第2希望</strong>
-                    <input type="date" name="date2">
-                    <div class="time-inputs">
-                        <select name="startTime2"></select>
-                        <span>〜</span>
-                        <select name="endTime2"></select>
-                    </div>
-                </div>
-                <div class="date-group">
-                    <strong>第3希望</strong>
-                    <input type="date" name="date3">
-                    <div class="time-inputs">
-                        <select name="startTime3"></select>
-                        <span>〜</span>
-                        <select name="endTime3"></select>
-                    </div>
-                </div>
-                </div>
-            <button type="submit" id="submit-button">次のアンケートに進む</button>
-        </form>
-        <div id="loading">送信中...</div>
-        <div id="error"></div>
-    </div>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-        function populateTimeSelects() {
-            const timeSelects = document.querySelectorAll('select[name^="startTime"], select[name^="endTime"]');
-            let options = '<option value="">--:--</option>';
-            for (let h = 9; h <= 21; h++) {
-                for (let m = 0; m < 60; m += 30) {
-                    const hour = String(h).padStart(2, '0');
-                    const minute = String(m).padStart(2, '0');
-                    const timeValue = `${hour}:${minute}`;
-                    options += `<option value="${timeValue}">${timeValue}</option>`;
-                }
-            }
-            timeSelects.forEach(select => {
-                select.innerHTML = options;
-            });
+        </div>
+        <hr>
+
+        <p>第1希望日時</p>
+        <div class="form-group">
+            <input type="date" id="date1" name="date1" required>
+        </div>
+        <div class="form-group time-group">
+            <div>
+                <label for="startTime1">開始</label>
+                <input type="time" id="startTime1" name="startTime1" required>
+            </div>
+            <div>
+                <label for="endTime1">終了</label>
+                <input type="time" id="endTime1" name="endTime1" required>
+            </div>
+        </div>
+        <hr>
+        <p>第2希望日時（任意）</p>
+        <div class="form-group">
+            <input type="date" id="date2" name="date2">
+        </div>
+        <div class="form-group time-group">
+            <div>
+                <label for="startTime2">開始</label>
+                <input type="time" id="startTime2" name="startTime2">
+            </div>
+            <div>
+                <label for="endTime2">終了</label>
+                <input type="time" id="endTime2" name="endTime2">
+            </div>
+        </div>
+        <hr>
+        <p>第3希望日時（任意）</p>
+        <div class="form-group">
+            <input type="date" id="date3" name="date3">
+        </div>
+        <div class="form-group time-group">
+            <div>
+                <label for="startTime3">開始</label>
+                <input type="time" id="startTime3" name="startTime3">
+            </div>
+            <div>
+                <label for="endTime3">終了</label>
+                <input type="time" id="endTime3" name="endTime3">
+            </div>
+        </div>
+
+        <button type="submit">この内容で送信する</button>
+    </form>
+</div>
+
+<div id="loading">送信中...</div>
+<div id="error">エラーが発生しました。もう一度お試しください。</div>
+<div id="success">日程調整リクエストを送信しました！</div>
+
+<script>
+    let userId = null;
+    let salonId = null;
+
+    async function initializeLiff() {
+        await liff.init({ liffId: "2008066763-X5mxymoj" });
+        if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
         }
-        async function main() {
-            populateTimeSelects();
-            const liffId = "2008066763-X5mxymoj"; 
-            try {
-                await liff.init({ liffId });
-            } catch (error) {
-                document.getElementById('error').textContent = `LIFFの初期化に失敗しました: ${error}`;
-                document.getElementById('error').style.display = 'block';
-                return;
-            }
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            const profile = await liff.getProfile();
-            const userId = profile.userId;
-            const urlParams = new URLSearchParams(window.location.search);
-            const salonId = urlParams.get('salonId');
-            const form = document.getElementById('scheduleForm');
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('error').style.display = 'none';
-                document.getElementById('submit-button').disabled = true;
-                const formData = new FormData(form);
-                const scheduleData = {
-                    userId: userId,
-                    salonId: salonId,
-                    interviewMethod: formData.get('interviewMethod'),
-                    date1: formData.get('date1'),
-                    startTime1: formData.get('startTime1'),
-                    endTime1: formData.get('endTime1'),
-                    date2: formData.get('date2') || '',
-                    startTime2: formData.get('startTime2') || '',
-                    endTime2: formData.get('endTime2') || '',
-                    date3: formData.get('date3') || '',
-                    startTime3: formData.get('startTime3') || '',
-                    endTime3: formData.get('endTime3') || '',
-                };
-                const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-schedule";
-                
-                try {
-                    const response = await fetch(endpointUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(scheduleData)
-                    });
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result.nextLiffUrl) {
-                            window.location.href = result.nextLiffUrl;
-                        } else {
-                            liff.closeWindow();
-                        }
-                    } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || 'サーバーエラーが発生しました。');
-                    }
-                } catch (error) {
-                    document.getElementById('error').textContent = `送信に失敗しました: ${error.message}`;
-                    document.getElementById('error').style.display = 'block';
-                } finally {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('submit-button').disabled = false;
-                }
-            });
+        const context = liff.getContext();
+        userId = context.userId;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        salonId = urlParams.get('salonId');
+        if (!salonId) {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('error').innerHTML = 'サロン情報が不正です。';
+            document.getElementById('error').style.display = 'block';
         }
-        main();
-    </script>
+    }
+
+    // ★★★ ここからが変更点 ★★★
+    function checkInterviewMethod() {
+        const method = document.getElementById('interviewMethod').value;
+        const locationField = document.getElementById('locationField');
+        const locationInput = document.getElementById('interviewLocation');
+
+        if (method === 'カフェで話す' || method === 'サロン見学') {
+            locationField.style.maxHeight = '100px'; // 要素の高さを確保
+            locationField.style.opacity = '1';
+            locationField.style.marginTop = '20px'; // 上にマージンを追加
+            locationInput.required = true; // 必須項目にする
+        } else {
+            locationField.style.maxHeight = '0';
+            locationField.style.opacity = '0';
+            locationField.style.marginTop = '0';
+            locationInput.required = false; // 必須項目を解除
+            locationInput.value = ''; // 値をリセット
+        }
+    }
+    // ★★★ ここまでが変更点 ★★★
+
+    document.getElementById('scheduleForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        document.getElementById('formContainer').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+
+        const formData = new FormData(event.target);
+        const data = Object.fromEntries(formData.entries());
+        data.userId = userId;
+        data.salonId = salonId;
+        
+        // ★★★ ここからが変更点 ★★★
+        // interviewLocationが空の場合は送信データから削除
+        if (!data.interviewLocation) {
+            delete data.interviewLocation;
+        }
+        // ★★★ ここまでが変更点 ★★★
+
+        try {
+            const response = await fetch('https://lumina-offer-bot-new.onrender.com/submit-schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            
+            const result = await response.json();
+
+            if (response.ok) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+                // 成功後、アンケートLIFFに遷移
+                if(result.nextLiffUrl) {
+                    setTimeout(() => liff.openWindow({ url: result.nextLiffUrl, external: false }), 2000);
+                } else {
+                    setTimeout(() => liff.closeWindow(), 2000);
+                }
+            } else {
+                throw new Error(result.message || 'サーバーエラー');
+            }
+        } catch (err) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            console.error('送信エラー:', err);
+        }
+    });
+
+    initializeLiff();
+</script>
+
 </body>
 </html>
