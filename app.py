@@ -107,16 +107,13 @@ def find_and_generate_offer(user_wishes):
         prefecture = user_wishes.get("area_prefecture", "")
         detail_area = user_wishes.get("area_detail", "")
 
-        # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
-        # ジオコーディングの精度を上げるため、曖昧な表現を削除
         words_to_remove = ["周辺", "中心部", "あたり"]
         cleaned_detail_area = detail_area
         for word in words_to_remove:
             cleaned_detail_area = cleaned_detail_area.replace(word, "")
         
-        full_area = f"{prefecture} {cleaned_detail_area.strip()}" # .strip()で前後の空白も削除
-        # ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
-
+        full_area = f"{prefecture} {cleaned_detail_area.strip()}"
+        
         geolocator = Nominatim(user_agent="lumina_offer_geocoder")
         location = geolocator.geocode(full_area, timeout=10)
 
@@ -134,53 +131,89 @@ def find_and_generate_offer(user_wishes):
 
     distances = [geodesic(user_coords, (salon['緯度'], salon['経度'])).kilometers for _, salon in salons_df.iterrows()]
     salons_df['距離'] = distances
-    nearby_salons = salons_df[salons_df['距離'] <= 25].copy()
-    if nearby_salons.empty: return None, None, "希望勤務地の25km以内に条件に合うサロンが見つかりませんでした。"
+    
+    # ▼▼▼▼▼ ここからが新ロジック ▼▼▼▼▼
+    # 1. 最初に条件で絞り込む
+    conditionally_matched_salons = salons_df[salons_df['距離'] <= 25].copy()
 
     user_role = user_wishes.get("role")
     user_license = user_wishes.get("license")
 
-    salons_to_consider = nearby_salons[nearby_salons['募集状況'] == '募集中']
-    if salons_to_consider.empty: return None, None, "募集中のサロンがありません。"
+    conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['募集状況'] == '募集中']
+    if conditionally_matched_salons.empty: return None, None, "募集中のサロンがありません。"
 
     def role_matcher(salon_roles):
         roles_list = [r.strip() for r in str(salon_roles).split(',')]
         return user_role in roles_list
 
-    salons_to_consider = salons_to_consider[salons_to_consider['役職'].apply(role_matcher)]
-    if salons_to_consider.empty: return None, None, "役職に合うサロンがありません。"
+    conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['役職'].apply(role_matcher)]
+    if conditionally_matched_salons.empty: return None, None, "役職に合うサロンがありません。"
 
     if user_license == "取得済み":
-        salons_to_consider = salons_to_consider[salons_to_consider['美容師免許'] == '取得']
+        conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['美容師免許'] == '取得']
     else:
-        salons_to_consider = salons_to_consider[salons_to_consider['美容師免許'].isin(['取得', '未取得'])]
-    if salons_to_consider.empty: return None, None, "免許条件に合うサロンがありません。"
+        conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['美容師免許'].isin(['取得', '未取得'])]
+    if conditionally_matched_salons.empty: return None, None, "免許条件に合うサロンがありません。"
 
-    salons_json_string = salons_to_consider.to_json(orient='records', force_ascii=False)
+    # 2. 5km以内のサロンがあるか確認
+    within_5km_salons = conditionally_matched_salons[conditionally_matched_salons['距離'] <= 5]
 
-    prompt_text = f"""
-    あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
-    # 候補者プロフィール:
-    {json.dumps(user_wishes, ensure_ascii=False)}
-    # 候補となる求人リスト:
-    {salons_json_string}
-    # あなたのタスク:
-    1. **スコアリング**: 以下の基準で各求人を評価し、合計スコアが高い順に最大3件まで選んでください。
-    - 候補者が「最も興味のある待遇」（プロフィール内'perk'）を、求人が提供している（求人リスト内'待遇'に文字列として含まれている）場合: +10点
-    - 候補者のMBTIの性格特性が、求人の「特徴」と相性が良い場合: +5点
-    2. **オファー文章生成**: スコアが最も高かった1件目のサロンについてのみ、ルールを厳守し、候補者がカジュアル面談に行きたくなるようなオファー文章を150字以内で作成してください。
-    - 冒頭は必ず「LUMINA Offerから、あなたに特別なオファーが届いています。」で始めること。
-    - 候補者が「最も興味のある待遇」が、なぜそのサロンで満たされるのかを説明すること。
-    - 候補者のMBTIの性格特性が、どのようにそのサロンの文化や特徴と合致するのかを説明すること。
-    - 最後は必ず「まずは、サロンから話を聞いてみませんか？」という一文で締めること。
-    - 禁止事項: サロンが直接オファーを送っているかのような表現は避けること。
-    # 回答フォーマット:
-    以下のJSON形式で、厳密に回答してください。
-    {{
-    "ranked_store_ids": [ (ここにスコア上位の'店舗ID'を数値のリストで記述。例: [101, 108, 125]) ],
-    "first_offer_message": "(ここに1件目のサロン用のオファー文章を記述)"
-    }}
-    """
+    if not within_5km_salons.empty:
+        # 5km以内にサロンがあれば、距離が最も近いものを選択
+        print("5km以内に条件マッチするサロンが見つかりました。距離を優先します。")
+        sorted_salons = within_5km_salons.sort_values(by='距離')
+        best_salon_info = sorted_salons.iloc[0].to_dict()
+        ranked_ids = [best_salon_info['店舗ID']]
+        
+        # 選んだサロンのためだけにオファー文章を生成させる
+        prompt_text = f"""
+        あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
+        # 候補者プロフィール:
+        {json.dumps(user_wishes, ensure_ascii=False)}
+        # オファーを送るサロン情報:
+        {json.dumps(best_salon_info, ensure_ascii=False, indent=2)}
+        # あなたのタスク:
+        提示されたサロン情報と候補者プロフィールを基に、ルールを厳守し、候補者がカジュアル面談に行きたくなるようなオファー文章を150字以内で作成してください。
+        - 冒頭は必ず「LUMINA Offerから、あなたに特別なオファーが届いています。」で始めること。
+        - 候補者が「最も興味のある待遇」が、なぜそのサロンで満たされるのかを説明すること。
+        - 候補者のMBTIの性格特性が、どのようにそのサロンの文化や特徴と合致するのかを説明すること。
+        - 最後は必ず「まずは、サロンから話を聞いてみませんか？」という一文で締めること。
+        - 禁止事項: サロンが直接オファーを送っているかのような表現は避けること。
+        # 回答フォーマット:
+        以下のJSON形式で、厳密に回答してください。
+        {{
+        "offer_message": "(ここに生成したオファー文章を記述)"
+        }}
+        """
+    else:
+        # 5km以内にサロンがなければ、これまで通りAIに選ばせる
+        print("5km以内に条件マッチするサロンはありません。AIスコアリングで最適なサロンを選びます。")
+        salons_json_string = conditionally_matched_salons.to_json(orient='records', force_ascii=False)
+
+        prompt_text = f"""
+        あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
+        # 候補者プロフィール:
+        {json.dumps(user_wishes, ensure_ascii=False)}
+        # 候補となる求人リスト:
+        {salons_json_string}
+        # あなたのタスク:
+        1. **スコアリング**: 以下の基準で各求人を評価し、合計スコアが高い順に最大3件まで選んでください。
+        - 候補者が「最も興味のある待遇」（プロフィール内'perk'）を、求人が提供している（求人リスト内'待遇'に文字列として含まれている）場合: +10点
+        - 候補者のMBTIの性格特性が、求人の「特徴」と相性が良い場合: +5点
+        2. **オファー文章生成**: スコアが最も高かった1件目のサロンについてのみ、ルールを厳守し、候補者がカジュアル面談に行きたくなるようなオファー文章を150字以内で作成してください。
+        - 冒頭は必ず「LUMINA Offerから、あなたに特別なオファーが届いています。」で始めること。
+        - 候補者が「最も興味のある待遇」が、なぜそのサロンで満たされるのかを説明すること。
+        - 候補者のMBTIの性格特性が、どのようにそのサロンの文化や特徴と合致するのかを説明すること。
+        - 最後は必ず「まずは、サロンから話を聞いてみませんか？」という一文で締めること。
+        - 禁止事項: サロンが直接オファーを送っているかのような表現は避けること。
+        # 回答フォーマット:
+        以下のJSON形式で、厳密に回答してください。
+        {{
+        "ranked_store_ids": [ (ここにスコア上位の'店舗ID'を数値のリストで記述。例: [101, 108, 125]) ],
+        "first_offer_message": "(ここに1件目のサロン用のオファー文章を記述)"
+        }}
+        """
+    # ▲▲▲▲▲ 新ロジックここまで ▲▲▲▲▲
     
     try:
         api_key = os.environ.get('GEMINI_API_KEY')
@@ -191,11 +224,7 @@ def find_and_generate_offer(user_wishes):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
-        data = {
-            "contents": [{
-                "parts": [{"text": prompt_text}]
-            }]
-        }
+        data = { "contents": [{ "parts": [{"text": prompt_text}] }] }
 
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
@@ -217,23 +246,29 @@ def find_and_generate_offer(user_wishes):
         json_str = json_str_match.group(0)
         gemini_response = json.loads(json_str)
 
-        ranked_ids = gemini_response.get("ranked_store_ids")
-        first_offer_message = gemini_response.get("first_offer_message")
+        if not within_5km_salons.empty:
+            # 5km以内ロジックの応答処理
+            offer_message = gemini_response.get("offer_message")
+            return ranked_ids, best_salon_info, offer_message
+        else:
+            # AIスコアリングロジックの応答処理
+            ranked_ids = gemini_response.get("ranked_store_ids")
+            first_offer_message = gemini_response.get("first_offer_message")
 
-        if not ranked_ids: return None, None, "AIによるスコアリングの結果、最適なサロンが見つかりませんでした。"
+            if not ranked_ids: return None, None, "AIによるスコアリングの結果、最適なサロンが見つかりませんでした。"
 
-        first_match_id = ranked_ids[0]
-        matched_salon_info_series = salons_to_consider[salons_to_consider['店舗ID'].astype(int) == int(first_match_id)]
+            first_match_id = ranked_ids[0]
+            matched_salon_info_series = conditionally_matched_salons[conditionally_matched_salons['店舗ID'].astype(int) == int(first_match_id)]
 
-        if matched_salon_info_series.empty: return None, None, "マッチしたサロン情報が見つかりませんでした。"
+            if matched_salon_info_series.empty: return None, None, "マッチしたサロン情報が見つかりませんでした。"
+            matched_salon_info = matched_salon_info_series.iloc[0].to_dict()
+            return ranked_ids, matched_salon_info, first_offer_message
 
-        matched_salon_info = matched_salon_info_series.iloc[0].to_dict()
-
-        return ranked_ids, matched_salon_info, first_offer_message
     except Exception as e:
         print(f"Geminiからの応答解析エラー: {e}")
         print(f"Geminiからの元テキスト: {response_text}")
         return None, None, "AIからの応答解析中にエラーが発生しました。"
+
 
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
