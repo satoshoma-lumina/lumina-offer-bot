@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE連絡先の交換</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px 30px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { text-align: center; font-size: 22px; margin-bottom: 10px;}
+        p { text-align: center; margin-bottom: 25px; line-height: 1.6; }
+        .step-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
+        .step-box h2 { font-size: 18px; margin-top: 0; color: #333; }
+        textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; resize: vertical; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
+        .btn-action { background-color: #06C755; color: white; margin-bottom: 10px; }
+        .btn-submit { background-color: #FF6B6B; color: white; margin-top: 10px; }
+        button:disabled { background-color: #ccc; }
+        #loading, #error { text-align: center; margin-top: 15px; display: none; }
+        #error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LINE連絡先の交換</h1>
+        <p>サロン担当者と直接やり取りするために、ご自身のLINE友だち追加URLを送信してください。</p>
+
+        <form id="lineContactForm">
+            <div class="step-box">
+                <h2>ステップ1：友だち追加URLをコピー</h2>
+                <button type="button" id="copy-url-button" class="btn-action">LINEの招待画面を開く</button>
+                <small>ボタンを押して表示された画面で「招待」→「シェア」→「コピー」を選択してください。</small>
+            </div>
+
+            <div class="step-box">
+                <h2>ステップ2：URLを貼り付けて送信</h2>
+                <textarea id="line_url" name="line_url" placeholder="ここにコピーしたURLを貼り付けてください" required></textarea>
+                <button type="submit" id="submit-button" class="btn-submit">この内容で送信する</button>
+            </div>
+        </form>
+        <div id="loading">送信中...</div>
+        <div id="error"></div>
+    </div>
+
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        async function main() {
+            // Step 5でこのIDを書き換えます
+            const liffId = "ここに新しいLIFF_IDを設定します"; 
+            const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-line-contact";
+
+            try {
+                await liff.init({ liffId: liffId });
+                if (!liff.isLoggedIn()) { liff.login(); return; }
+
+                const profile = await liff.getProfile();
+                const userId = profile.userId;
+
+                const copyUrlButton = document.getElementById('copy-url-button');
+                const form = document.getElementById('lineContactForm');
+                const submitButton = document.getElementById('submit-button');
+                const loadingDiv = document.getElementById('loading');
+                const errorDiv = document.getElementById('error');
+                
+                copyUrlButton.addEventListener('click', () => {
+                    liff.openWindow({
+                        url: 'https://line.me/R/nv/invite',
+                        external: true
+                    });
+                });
+
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    submitButton.disabled = true;
+                    loadingDiv.style.display = 'block';
+                    errorDiv.style.display = 'none';
+
+                    const formData = new FormData(form);
+                    const lineUrl = formData.get('line_url');
+                    
+                    if (!lineUrl || !lineUrl.includes('line.me')) {
+                        errorDiv.textContent = '正しいLINEのURLを貼り付けてください。';
+                        errorDiv.style.display = 'block';
+                        loadingDiv.style.display = 'none';
+                        submitButton.disabled = false;
+                        return;
+                    }
+
+                    const payload = { userId: userId, lineUrl: lineUrl };
+
+                    try {
+                        const response = await fetch(endpointUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) {
+                            liff.closeWindow();
+                        } else {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || 'サーバーエラーが発生しました。');
+                        }
+                    } catch (error) {
+                        loadingDiv.style.display = 'none';
+                        errorDiv.textContent = `送信に失敗しました: ${error.message}`;
+                        errorDiv.style.display = 'block';
+                        submitButton.disabled = false;
+                    }
+                });
+
+            } catch (error) {
+                errorDiv.textContent = `ページの初期化に失敗しました: ${error.message}`;
+                errorDiv.style.display = 'block';
+            }
+        }
+        main();
+    </script>
+</body>
+</html>
