@@ -29,7 +29,7 @@ CORS(app)
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 # ★★★★★ ここに、LINE連絡先交換用に新しく取得したLIFF IDを設定してください ★★★★★
-LINE_CONTACT_LIFF_ID = "YOUR_NEW_LIFF_ID_HERE" # 例: "2008066763-AbcDEfG"
+LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl" # 例: "2008066763-AbcDEfG"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
