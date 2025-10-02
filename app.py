@@ -106,7 +106,16 @@ def find_and_generate_offer(user_wishes):
     try:
         prefecture = user_wishes.get("area_prefecture", "")
         detail_area = user_wishes.get("area_detail", "")
-        full_area = f"{prefecture} {detail_area}"
+
+        # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
+        # ジオコーディングの精度を上げるため、曖昧な表現を削除
+        words_to_remove = ["周辺", "中心部", "あたり"]
+        cleaned_detail_area = detail_area
+        for word in words_to_remove:
+            cleaned_detail_area = cleaned_detail_area.replace(word, "")
+        
+        full_area = f"{prefecture} {cleaned_detail_area.strip()}" # .strip()で前後の空白も削除
+        # ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
 
         geolocator = Nominatim(user_agent="lumina_offer_geocoder")
         location = geolocator.geocode(full_area, timeout=10)
@@ -178,10 +187,7 @@ def find_and_generate_offer(user_wishes):
         if not api_key:
             return None, None, "GEMINI_API_KEYが設定されていません。"
 
-        # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
-        # Geminiのモデル名を指定されたものに変更
-        model_name = "gemini-2.5-flash"
-        # ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
+        model_name = "gemini-2.5-Flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
