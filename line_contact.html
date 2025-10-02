@@ -18,13 +18,7 @@
         button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; }
         #error { color: red; }
-        /* ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼ */
-        a.btn-action {
-            display: block;
-            text-decoration: none;
-            line-height: 1.5;
-        }
-        /* ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲ */
+        a.btn-action { display: block; text-decoration: none; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -35,7 +29,7 @@
         <form id="lineContactForm">
             <div class="step-box">
                 <h2>ステップ1：友だち追加URLをコピー</h2>
-                <a href="https://line.me/R/nv/invite" class="btn-action" role="button">LINEの招待画面を開く</a>
+                <a href="https://line.me/R/nv/invite" target="_blank" rel="noopener noreferrer" class="btn-action" role="button">LINEの招待画面を開く</a>
                 <small>ボタンを押して表示された画面で「招待」→「シェア」→「コピー」を選択してください。</small>
             </div>
 
@@ -52,7 +46,8 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
-            const liffId = "YOUR_NEW_LIFF_ID_FOR_LINE_CONTACT"; // ご自身のLIFF IDに書き換えてください
+            // ★★★★★ ご自身のLIFF IDに書き換えるのを忘れないでください ★★★★★
+            const liffId = "YOUR_NEW_LIFF_ID_FOR_LINE_CONTACT"; 
             const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-line-contact";
 
             try {
@@ -67,10 +62,6 @@
                 const loadingDiv = document.getElementById('loading');
                 const errorDiv = document.getElementById('error');
                 
-                // ▼▼▼▼▼ ここが修正点 (addEventListenerを削除) ▼▼▼▼▼
-                // copyUrlButtonのクリックイベントリスナーは不要になりました
-                // ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
-
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     submitButton.disabled = true;
