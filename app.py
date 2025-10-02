@@ -187,7 +187,7 @@ def find_and_generate_offer(user_wishes):
         if not api_key:
             return None, None, "GEMINI_API_KEYが設定されていません。"
 
-        model_name = "gemini-2.5-Flash"
+        model_name = "gemini-2.5-flash"
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
