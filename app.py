@@ -31,10 +31,7 @@ QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
 # --- 認証設定 ---
-# ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
-# RenderのSecret Fileのパスを正しいファイル名に修正
 creds_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '/etc/secrets/delta-wonder-471708-u1-93f8d5bbdf1c.json')
-# ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
 
 # LINE API
 configuration = Configuration(access_token=os.environ.get('YOUR_CHANNEL_ACCESS_TOKEN'))
@@ -181,8 +178,10 @@ def find_and_generate_offer(user_wishes):
         if not api_key:
             return None, None, "GEMINI_API_KEYが設定されていません。"
 
-        # 利用可能なモデル名を指定
-        model_name = "gemini-1.5-flash-latest" # 例: gemini-1.5-flash-latestなど
+        # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
+        # Geminiのモデル名を指定されたものに変更
+        model_name = "gemini-2.5-Flash"
+        # ▲▲▲▲▲ 修正点ここまで ▲▲▲▲▲
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
         headers = {"Content-Type": "application/json"}
