@@ -28,6 +28,7 @@ CORS(app)
 # --- 定数定義 ---
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
+# ▼▼▼▼▼ この行を正しいIDに修正しました ▼▼▼▼▼
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
