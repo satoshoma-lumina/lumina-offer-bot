@@ -28,7 +28,6 @@ CORS(app)
 # --- 定数定義 ---
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
-# ▼▼▼▼▼ ご指定のLIFF IDを設定済みです ▼▼▼▼▼
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
@@ -384,6 +383,37 @@ def trigger_offer():
     user_id = data.get('userId')
     user_wishes = data.get('wishes')
     if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
+    
+    # ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
+    try:
+        user_name = user_wishes.get('full_name', '不明なユーザー')
+        subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
+        body = f"""
+            新しいユーザーからプロフィールの登録がありました。
+            内容を確認し、システムが自動送信するオファーの妥当性を確認してください。
+
+            <hr>
+            <b>▼ 登録情報</b><br>
+            - 氏名: {user_wishes.get('full_name', '')}<br>
+            - 性別: {user_wishes.get('gender', '')}<br>
+            - 生年月日: {user_wishes.get('birthdate', '')}<br>
+            - 電話番号: {user_wishes.get('phone_number', '')}<br>
+            - 美容師免許: {user_wishes.get('license', '')}<br>
+            - MBTI: {user_wishes.get('mbti', '')}<br>
+            - 役職: {user_wishes.get('role', '')}<br>
+            - 希望エリア: {user_wishes.get('area_prefecture', '')} {user_wishes.get('area_detail', '')}<br>
+            - 職場満足度: {user_wishes.get('satisfaction', '')}<br>
+            - 興味のある待遇: {user_wishes.get('perk', '')}<br>
+            - 今の状況: {user_wishes.get('current_status', '')}<br>
+            - 転職希望時期: {user_wishes.get('timing', '')}<br>
+            - ユーザーID: {user_id}
+            <hr>
+        """
+        send_notification_email(subject, body)
+    except Exception as e:
+        print(f"初回登録の通知メール送信中にエラーが発生: {e}")
+    # ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
+
     try:
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
