@@ -144,6 +144,30 @@ def find_and_select_top_salons(user_wishes):
     else:
         conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['美容師免許'].isin(['取得', '未取得'])]
     if conditionally_matched_salons.empty: return [], "免許条件に合うサロンがありません。"
+
+    user_gender = user_wishes.get("gender")
+    if user_gender:
+        conditionally_matched_salons = conditionally_matched_salons[
+            (conditionally_matched_salons['ターゲット性別'].isnull()) |
+            (conditionally_matched_salons['ターゲット性別'] == '') |
+            (conditionally_matched_salons['ターゲット性別'] == '指定なし') |
+            (conditionally_matched_salons['ターゲット性別'] == user_gender)
+        ]
+    if conditionally_matched_salons.empty: return [], "性別の条件に合うサロンがありません。"
+
+    # ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
+    # H列「ターゲット年齢」による絞り込み
+    user_age_group = user_wishes.get("age")
+    if user_age_group:
+        conditionally_matched_salons = conditionally_matched_salons[
+            (conditionally_matched_salons['ターゲット年齢'].isnull()) |
+            (conditionally_matched_salons['ターゲット年齢'] == '') |
+            (conditionally_matched_salons['ターゲット年齢'] == '指定なし') |
+            (conditionally_matched_salons['ターゲット年齢'].str.contains(user_age_group, na=False))
+        ]
+    if conditionally_matched_salons.empty:
+        return [], "年齢の条件に合うサロンがありません。"
+    # ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
     
     already_sent_salon_ids = [ record['店舗ID'] for record in offer_history if record['ユーザーID'] == user_wishes.get('userId') ]
     if already_sent_salon_ids:
@@ -360,8 +384,6 @@ def process_offer_queue():
         traceback.print_exc()
         return "An error occurred.", 500
         
-# (その他のエンドポイントは変更がないため、ここでは省略せず、全て含めています)
-
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
