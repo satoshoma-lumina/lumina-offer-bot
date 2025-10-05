@@ -3,7 +3,7 @@ import json
 import gspread
 import pandas as pd
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import traceback
 import requests
 
@@ -20,7 +20,7 @@ from linebot.v3.messaging import (
     PushMessageRequest, ReplyMessageRequest, TextMessage,
     FlexMessage, FlexContainer
 )
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, FollowEvent
 
 app = Flask(__name__)
 CORS(app)
@@ -54,12 +54,13 @@ def send_notification_email(subject, body):
 
 def process_and_send_offer(user_id, user_wishes):
     try:
+        user_wishes['userId'] = user_id
         ranked_ids, matched_salon, result_or_reason = find_and_generate_offer(user_wishes)
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             if matched_salon:
                 offer_text = result_or_reason
-                today_str = datetime.today().strftime('%Y/%m/%d')
+                today_str = datetime.now(timezone(timedelta(hours=+9))).strftime('%Y/%m/%d')
                 try:
                     gc = gspread.service_account(filename=creds_path)
                     offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
@@ -84,6 +85,8 @@ def find_and_generate_offer(user_wishes):
         gc = gspread.service_account(filename=creds_path)
         salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
         all_salons_data = salon_master_sheet.get_all_records()
+        offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
+        offer_history = offer_management_sheet.get_all_records()
     except Exception as e:
         print(f"スプレッドシート読み込みエラー: {e}")
         traceback.print_exc()
@@ -135,6 +138,12 @@ def find_and_generate_offer(user_wishes):
     else:
         conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['美容師免許'].isin(['取得', '未取得'])]
     if conditionally_matched_salons.empty: return None, None, "免許条件に合うサロンがありません。"
+    
+    already_sent_salon_ids = [ record['店舗ID'] for record in offer_history if record['ユーザーID'] == user_wishes.get('userId') ]
+    if already_sent_salon_ids:
+        conditionally_matched_salons = conditionally_matched_salons[ ~conditionally_matched_salons['店舗ID'].isin(already_sent_salon_ids) ]
+        if conditionally_matched_salons.empty:
+            return None, None, "条件に合うサロンはありますが、すべて過去にオファー済みです。"
 
     within_5km_salons = conditionally_matched_salons[conditionally_matched_salons['距離'] <= 5]
     best_salon_info = None
@@ -237,22 +246,7 @@ def create_salon_flex_message(salon, offer_text):
     recruitment_type = salon.get("募集", "")
     salon_id = salon.get('店舗ID')
     liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
-    return {
-        "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
-        "body": { "type": "box", "layout": "vertical", "contents": [
-            { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" },
-            { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}
-            ]}
-        ]},
-        "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-            { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": "https://example.com" }},
-            { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": liff_url }, "color": "#FF6B6B"}
-        ], "flex": 0 }
-    }
+    return { "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" }, "body": { "type": "box", "layout": "vertical", "contents": [ { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" }, { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [ { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]} ]} ]}, "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [ { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": "https://example.com" }}, { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": liff_url }, "color": "#FF6B6B"} ], "flex": 0 } }
 
 def get_age_from_birthdate(birthdate):
     today = datetime.today()
@@ -273,9 +267,7 @@ def callback():
 def handle_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")])
-        )
+        line_bot_api.reply_message_with_http_info( ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")]) )
 
 @app.route("/submit-schedule", methods=['POST'])
 def submit_schedule():
@@ -384,14 +376,12 @@ def trigger_offer():
     user_wishes = data.get('wishes')
     if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
     
-    # ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
     try:
         user_name = user_wishes.get('full_name', '不明なユーザー')
         subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
         body = f"""
             新しいユーザーからプロフィールの登録がありました。
             内容を確認し、システムが自動送信するオファーの妥当性を確認してください。
-
             <hr>
             <b>▼ 登録情報</b><br>
             - 氏名: {user_wishes.get('full_name', '')}<br>
@@ -412,7 +402,6 @@ def trigger_offer():
         send_notification_email(subject, body)
     except Exception as e:
         print(f"初回登録の通知メール送信中にエラーが発生: {e}")
-    # ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
 
     try:
         with ApiClient(configuration) as api_client:
@@ -421,17 +410,19 @@ def trigger_offer():
             line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
     except Exception as e:
         print(f"ウェルカムメッセージの送信エラー: {e}")
+
     if 'birthdate' in user_wishes and user_wishes['birthdate']:
         try:
             age = get_age_from_birthdate(user_wishes.get('birthdate'))
             user_wishes['age'] = f"{(age // 10) * 10}代"
         except (ValueError, TypeError):
             user_wishes['age'] = ''
+
     try:
         gc = gspread.service_account(filename=creds_path)
         user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
         user_headers = user_management_sheet.row_values(1)
-        user_row_dict = { "ユーザーID": user_id, "登録日": datetime.today().strftime('%Y/%m/%d'), "ステータス": 'オファー中', "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'), "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'), "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'), "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'), "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license') }
+        user_row_dict = { "ユーザーID": user_id, "登録日": datetime.now(timezone(timedelta(hours=+9))).strftime('%Y/%m/%d'), "ステータス": 'オファー中', "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'), "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'), "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'), "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'), "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license') }
         profile_headers = user_headers[:16]
         profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
         cell = user_management_sheet.find(user_id, in_column=1)
@@ -443,10 +434,54 @@ def trigger_offer():
             user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
     except Exception as e:
         print(f"ユーザー管理シートへの書き込みエラー: {e}"); traceback.print_exc()
+
+    try:
+        JST = timezone(timedelta(hours=+9))
+        now_jst = datetime.now(JST)
+        cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
+        send_time_obj = datetime.strptime("21:30", "%H:%M").time()
+        if now_jst >= cutoff_time:
+            send_date = now_jst.date() + timedelta(days=1)
+        else:
+            send_date = now_jst.date()
+        send_at_datetime = datetime.combine(send_date, send_time_obj, tzinfo=JST)
+        send_at_iso = send_at_datetime.isoformat()
+        queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
+        new_row = [user_id, json.dumps(user_wishes, ensure_ascii=False), send_at_iso, 'pending']
+        queue_sheet.append_row(new_row, value_input_option='USER_ENTERED')
+        print(f"ユーザーID {user_id} のオファーを {send_at_iso} に予約しました。")
+    except Exception as e:
+        print(f"オファーの予約処理中にエラー: {e}")
+        traceback.print_exc()
         process_and_send_offer(user_id, user_wishes)
-        return jsonify({"status": "success_with_db_error", "message": "Offer task processed, but failed to write to user sheet"})
-    process_and_send_offer(user_id, user_wishes)
-    return jsonify({"status": "success", "message": "Offer task processed immediately"})
+
+    return jsonify({"status": "success", "message": "Offer task scheduled successfully"})
+
+@app.route("/process-offer-queue", methods=['GET'])
+def process_offer_queue():
+    cron_secret = request.args.get('secret')
+    if cron_secret != os.environ.get('CRON_SECRET'):
+        return "Unauthorized", 401
+    
+    try:
+        JST = timezone(timedelta(hours=+9))
+        now_iso = datetime.now(JST).isoformat()
+        gc = gspread.service_account(filename=creds_path)
+        queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
+        all_records = queue_sheet.get_all_records()
+        for idx, record in enumerate(all_records):
+            row_num = idx + 2
+            if record.get('status') == 'pending' and record.get('send_at') <= now_iso:
+                print(f"{row_num}行目のオファーを処理します: {record.get('user_id')}")
+                user_id = record.get('user_id')
+                user_wishes = json.loads(record.get('wishes'))
+                process_and_send_offer(user_id, user_wishes)
+                queue_sheet.update_cell(row_num, 4, 'sent')
+        return "Offer queue processed.", 200
+    except Exception as e:
+        print(f"オファーキューの処理中にエラー: {e}")
+        traceback.print_exc()
+        return "An error occurred.", 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
