@@ -8,7 +8,6 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; }
         .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #333; }
-        p { text-align: center; margin-bottom: 25px; line-height: 1.6; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
         input[type="text"], input[type="date"], input[type="tel"], select {
@@ -22,15 +21,12 @@
         button:disabled {
             background-color: #ccc;
         }
-        #loading, #error, #success-message { text-align: center; margin-top: 15px; display: none; }
-        #error { color: red; }
-        #success-message { color: green; font-weight: bold; }
+        #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>プロフィール登録</h1>
-        <p>あなたにぴったりのサロンからのオファーを受け取るために、以下の項目を入力してください。</p>
         <form id="profileForm">
             <div class="form-group">
                 <label for="full_name">名前（フルネーム）</label>
@@ -151,15 +147,9 @@
             </div>
             <button type="submit" id="submit-button">オファーを受け取る</button>
         </form>
-        <div id="loading">オファーを準備中です...</div>
-        <div id="success-message">
-            受付が完了しました！<br>
-            あなたに最適なオファーを準備しています。<br>
-            LINEに通知が届くまで、この画面は閉じていただいて構いません。
-        </div>
+        <div id="loading">送信中...</div>
         <div id="error"></div>
-        </div>
-
+    </div>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         function setupBirthdateSelectors() {
@@ -206,20 +196,21 @@
                 const userId = profile.userId;
                 
                 const form = document.getElementById('profileForm');
-                
-                // ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼
                 const submitButton = document.getElementById('submit-button');
                 const loadingDiv = document.getElementById('loading');
-                const successDiv = document.getElementById('success-message');
                 const errorDiv = document.getElementById('error');
-
+                
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     
+                    // ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼
                     submitButton.disabled = true;
-                    loadingDiv.style.display = 'block';
                     errorDiv.style.display = 'none';
-                    successDiv.style.display = 'none';
+
+                    // メッセージを変更して表示
+                    loadingDiv.textContent = '送信中...30秒ほどお待ちください';
+                    loadingDiv.style.display = 'block';
+                    // ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
 
                     const formData = new FormData(form);
                     const wishes = {};
@@ -237,32 +228,29 @@
 
                     try {
                         const response = await fetch(endpointUrl, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify(payload),
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', },
+                            body: JSON.stringify(payload),
                         });
 
-                        loadingDiv.style.display = 'none';
-
+                        // ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼
+                        // サーバーが受付を完了したら、すぐにウィンドウを閉じる
                         if (response.ok) {
-                            successDiv.style.display = 'block';
-                            // 10秒後に自動でウィンドウを閉じる
-                            setTimeout(() => {
-                                liff.closeWindow();
-                            }, 10000);
+                            liff.closeWindow();
                         } else {
                             const errorData = await response.json();
-                            throw new Error(errorData.message || 'サーバーエラーが発生しました。');
+                            throw new Error(errorData.message || 'サーバーでエラーが発生しました。');
                         }
+                        // ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
                     } catch (error) {
                         loadingDiv.style.display = 'none';
                         errorDiv.textContent = `送信に失敗しました: ${error.message}`;
                         errorDiv.style.display = 'block';
-                        submitButton.disabled = false; // エラー時のみボタンを再度有効化
+                        submitButton.disabled = false;
                     }
                 });
-                // ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
-
             } catch (error) {
-                document.getElementById('error').textContent = `初期化に失敗しました。ページを再読み込みしてください。`;
+                document.getElementById('error').textContent = `ページの初期化に失敗しました。ページを再読み込みしてください。`;
                 document.getElementById('error').style.display = 'block';
             }
         }

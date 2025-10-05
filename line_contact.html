@@ -13,9 +13,14 @@
         b#displayName { color: #FF6B6B; }
         .instruction-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fafafa; }
         .instruction-box summary { cursor: pointer; text-align: center; color: #007bff; font-weight: bold; }
+        
+        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
         .instruction-step { margin-top: 15px; }
-        .instruction-step p { text-align: left; font-size: 14px; margin-bottom: 5px;}
-        .instruction-step img { max-width: 100%; border-radius: 5px; border: 1px solid #ddd; margin-top: 5px; margin-bottom: 15px; }
+        .instruction-step ol { padding-left: 25px; margin: 0; }
+        .instruction-step li { font-size: 14px; line-height: 1.6; margin-bottom: 10px; }
+        .instruction-step li:last-child { margin-bottom: 0; }
+        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
+
         textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; resize: vertical; margin-top: 10px; }
         button { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
         .btn-submit { background-color: #FF6B6B; color: white; margin-top: 20px; }
@@ -33,16 +38,15 @@
             <details>
                 <summary>URLの取得方法が分からない場合はこちら</summary>
                 <div class="instruction-step">
-                    <p>1. 一旦この画面を閉じ、LINEの「ホーム」右上のアイコンを押します。</p>
-                    <img src="https://i.imgur.com/vA17a3r.png" alt="手順1">
-                    <p>2. 「招待」をタップします。</p>
-                    <img src="https://i.imgur.com/Gz42yC0.png" alt="手順2">
-                    <p>3. 「SMS」を選び、宛先は誰でも良いので一人選択します。（実際には送信しません）</p>
-                    <img src="https://i.imgur.com/3UaKk9I.png" alt="手順3">
-                    <p>4. 表示された文章の中にあるURLの部分だけを長押ししてコピーし、この画面に戻ってきてください。</p>
-                    <img src="https://i.imgur.com/pYY5z50.png" alt="手順4">
+                    <ol>
+                        <li>一旦この画面を閉じ、LINEの下にある「ホーム」アイコンを押します。</li>
+                        <li>上に表示されている自分のLINEアカウントを押してプロフィールの表示画面に移ります。</li>
+                        <li>右上の「歯車マーク」の左にある「QRコード」のアイコンを押します。</li>
+                        <li>一番左にある「リンクをコピー」を押すとLINEのURLがコピーされた状態になります。</li>
+                        <li>この画面の下にあるURL貼り付け欄にペーストして送信します。</li>
+                    </ol>
                 </div>
-            </details>
+                </details>
         </div>
         
         <form id="lineContactForm">
@@ -58,7 +62,6 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
-            // ▼▼▼▼▼ ご指定のLIFF IDを設定済みです ▼▼▼▼▼
             const liffId = "2008066763-Rv0z80wl";
             const endpointUrl = "https://lumina-offer-bot-new.onrender.com/submit-line-contact";
 
