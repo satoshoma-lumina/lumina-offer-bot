@@ -144,7 +144,7 @@ def find_and_select_top_salons(user_wishes):
     else:
         conditionally_matched_salons = conditionally_matched_salons[conditionally_matched_salons['美容師免許'].isin(['取得', '未取得'])]
     if conditionally_matched_salons.empty: return [], "免許条件に合うサロンがありません。"
-
+    
     user_gender = user_wishes.get("gender")
     if user_gender:
         conditionally_matched_salons = conditionally_matched_salons[
@@ -155,8 +155,6 @@ def find_and_select_top_salons(user_wishes):
         ]
     if conditionally_matched_salons.empty: return [], "性別の条件に合うサロンがありません。"
 
-    # ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
-    # H列「ターゲット年齢」による絞り込み
     user_age_group = user_wishes.get("age")
     if user_age_group:
         conditionally_matched_salons = conditionally_matched_salons[
@@ -165,9 +163,7 @@ def find_and_select_top_salons(user_wishes):
             (conditionally_matched_salons['ターゲット年齢'] == '指定なし') |
             (conditionally_matched_salons['ターゲット年齢'].str.contains(user_age_group, na=False))
         ]
-    if conditionally_matched_salons.empty:
-        return [], "年齢の条件に合うサロンがありません。"
-    # ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
+    if conditionally_matched_salons.empty: return [], "年齢の条件に合うサロンがありません。"
     
     already_sent_salon_ids = [ record['店舗ID'] for record in offer_history if record['ユーザーID'] == user_wishes.get('userId') ]
     if already_sent_salon_ids:
@@ -219,171 +215,21 @@ def find_and_select_top_salons(user_wishes):
 
     return top_salons, "サロン選出完了"
 
+def create_salon_flex_message(salon, offer_text):
+    db_role = salon.get("役職", "")
+    display_role = "アシスタント" if "アシスタント" in db_role else "スタイリスト"
+    recruitment_type = salon.get("募集", "")
+    salon_id = salon.get('店舗ID')
+    liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
+    return { "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" }, "body": { "type": "box", "layout": "vertical", "contents": [ { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" }, { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [ { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]} ]} ]}, "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [ { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": "https://example.com" }}, { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": liff_url }, "color": "#FF6B6B"} ], "flex": 0 } }
 
-@app.route("/trigger-offer", methods=['POST'])
-def trigger_offer():
-    data = request.get_json()
-    if not data: return jsonify({"status": "error", "message": "No data provided"}), 400
-    user_id = data.get('userId')
-    user_wishes = data.get('wishes')
-    if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
-    
-    try:
-        user_name = user_wishes.get('full_name', '不明なユーザー')
-        subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
-        body = f"""
-            新しいユーザーからプロフィールの登録がありました。
-            内容を確認し、システムが自動送信するオファーの妥当性を確認してください。
-            <hr>
-            <b>▼ 登録情報</b><br>
-            - 氏名: {user_wishes.get('full_name', '')}<br>
-            - 性別: {user_wishes.get('gender', '')}<br>
-            - 生年月日: {user_wishes.get('birthdate', '')}<br>
-            - 電話番号: {user_wishes.get('phone_number', '')}<br>
-            - 美容師免許: {user_wishes.get('license', '')}<br>
-            - MBTI: {user_wishes.get('mbti', '')}<br>
-            - 役職: {user_wishes.get('role', '')}<br>
-            - 希望エリア: {user_wishes.get('area_prefecture', '')} {user_wishes.get('area_detail', '')}<br>
-            - 職場満足度: {user_wishes.get('satisfaction', '')}<br>
-            - 興味のある待遇: {user_wishes.get('perk', '')}<br>
-            - 今の状況: {user_wishes.get('current_status', '')}<br>
-            - 転職希望時期: {user_wishes.get('timing', '')}<br>
-            - ユーザーID: {user_id}
-            <hr>
-        """
-        send_notification_email(subject, body)
-    except Exception as e:
-        print(f"初回登録の通知メール送信中にエラーが発生: {e}")
+# ▼▼▼▼▼ 欠落していた関数をここに追加しました ▼▼▼▼▼
+def get_age_from_birthdate(birthdate):
+    today = datetime.today()
+    birth_date = datetime.strptime(birthdate, '%Y-%m-%d')
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+# ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
-    try:
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            welcome_message = ( "ご登録いただき、誠にありがとうございます！\n" "LUMINA Offerが、あなたにプロフィールを拝見してピッタリな『好待遇サロンの公認オファー』を、このLINEアカウントを通じてご連絡いたします。\n" "楽しみにお待ちください！" )
-            line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
-    except Exception as e:
-        print(f"ウェルカムメッセージの送信エラー: {e}")
-
-    if 'birthdate' in user_wishes and user_wishes['birthdate']:
-        try:
-            age = get_age_from_birthdate(user_wishes.get('birthdate'))
-            user_wishes['age'] = f"{(age // 10) * 10}代"
-        except (ValueError, TypeError):
-            user_wishes['age'] = ''
-    try:
-        gc = gspread.service_account(filename=creds_path)
-        user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
-        user_headers = user_management_sheet.row_values(1)
-        user_row_dict = { "ユーザーID": user_id, "登録日": datetime.now(JST).strftime('%Y/%m/%d'), "ステータス": 'オファー中', "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'), "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'), "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'), "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'), "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license') }
-        profile_headers = user_headers[:16]
-        profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
-        cell = user_management_sheet.find(user_id, in_column=1)
-        if cell:
-            range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
-            user_management_sheet.update(range_to_update, [profile_row_values])
-        else:
-            full_row = profile_row_values + [''] * (len(user_headers) - len(profile_headers))
-            user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
-    except Exception as e:
-        print(f"ユーザー管理シートへの書き込みエラー: {e}"); traceback.print_exc()
-
-    try:
-        user_wishes['userId'] = user_id
-        top_salons, reason = find_and_select_top_salons(user_wishes)
-        
-        if not top_salons:
-            print(f"ユーザーID {user_id} のオファー予約に失敗しました。理由: {reason}")
-            return jsonify({"status": "error", "message": "No salons found to schedule"}), 404
-
-        now_jst = datetime.now(JST)
-        cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
-        
-        if now_jst >= cutoff_time:
-            first_send_date = now_jst.date() + timedelta(days=1)
-        else:
-            first_send_date = now_jst.date()
-        
-        schedule = [
-            (first_send_date, "21:30"),
-            (first_send_date + timedelta(days=1), "12:30"),
-            (first_send_date + timedelta(days=1), "20:00"),
-            (first_send_date + timedelta(days=3), "12:30"),
-            (first_send_date + timedelta(days=4), "21:30")
-        ]
-        
-        rows_to_append = []
-        for i, salon in enumerate(top_salons):
-            if i < len(schedule):
-                send_date, send_time_str = schedule[i]
-                send_time_obj = datetime.strptime(send_time_str, "%H:%M").time()
-                send_at_datetime = datetime.combine(send_date, send_time_obj, tzinfo=JST)
-                send_at_iso = send_at_datetime.isoformat()
-                new_row = [user_id, salon['店舗ID'], send_at_iso, 'pending']
-                rows_to_append.append(new_row)
-
-        if rows_to_append:
-            gc = gspread.service_account(filename=creds_path)
-            queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
-            queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
-            print(f"ユーザーID {user_id} のために {len(rows_to_append)}件のオファーを予約しました。")
-
-    except Exception as e:
-        print(f"オファーの予約処理中にエラー: {e}")
-        traceback.print_exc()
-
-    return jsonify({"status": "success", "message": "Offer tasks scheduled successfully"})
-
-@app.route("/process-offer-queue", methods=['GET'])
-def process_offer_queue():
-    cron_secret = request.args.get('secret')
-    if cron_secret != os.environ.get('CRON_SECRET'):
-        return "Unauthorized", 401
-    
-    try:
-        now_iso = datetime.now(JST).isoformat()
-        
-        gc = gspread.service_account(filename=creds_path)
-        queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
-        user_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
-        salon_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
-        
-        all_queue = queue_sheet.get_all_records()
-        all_users = user_sheet.get_all_records(value_render_option='UNFORMATTED_VALUE')
-        all_salons = salon_sheet.get_all_records()
-
-        users_dict = {str(u['ユーザーID']): u for u in all_users}
-        salons_dict = {str(s['店舗ID']): s for s in all_salons}
-        
-        for idx, record in enumerate(all_queue):
-            row_num = idx + 2
-            if record.get('status') == 'pending' and record.get('send_at') <= now_iso:
-                user_id = str(record.get('user_id'))
-                salon_id = str(record.get('salon_id'))
-                
-                user_wishes = users_dict.get(user_id)
-                salon_info = salons_dict.get(salon_id)
-
-                if user_wishes and salon_info:
-                    print(f"{row_num}行目のオファーを処理します: {user_id} -> Salon {salon_id}")
-                    
-                    offer_message = generate_single_offer_message(user_wishes, salon_info)
-                    
-                    with ApiClient(configuration) as api_client:
-                        line_bot_api = MessagingApi(api_client)
-                        flex_container = FlexContainer.from_dict(create_salon_flex_message(salon_info, offer_message))
-                        messages = [FlexMessage(alt_text=f"{salon_info['店舗名']}からのオファー", contents=flex_container)]
-                        line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
-                    
-                    queue_sheet.update_cell(row_num, 4, 'sent')
-                else:
-                    print(f"ユーザー({user_id})またはサロン({salon_id})の情報が見つからず、スキップします。")
-                    queue_sheet.update_cell(row_num, 4, 'error')
-        
-        return "Offer queue processed.", 200
-    except Exception as e:
-        print(f"オファーキューの処理中にエラー: {e}")
-        traceback.print_exc()
-        return "An error occurred.", 500
-        
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -498,6 +344,171 @@ def submit_line_contact():
     except Exception as e:
         print(f"LINE連絡先更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update LINE contact"}), 500
+
+@app.route("/trigger-offer", methods=['POST'])
+def trigger_offer():
+    data = request.get_json()
+    if not data: return jsonify({"status": "error", "message": "No data provided"}), 400
+    user_id = data.get('userId')
+    user_wishes = data.get('wishes')
+    if not user_id or not user_wishes: return jsonify({"status": "error", "message": "Missing userId or wishes"}), 400
+    
+    try:
+        user_name = user_wishes.get('full_name', '不明なユーザー')
+        subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
+        body = f"""
+            新しいユーザーからプロフィールの登録がありました。
+            内容を確認し、システムが自動送信するオファーの妥当性を確認してください。
+            <hr>
+            <b>▼ 登録情報</b><br>
+            - 氏名: {user_wishes.get('full_name', '')}<br>
+            - 性別: {user_wishes.get('gender', '')}<br>
+            - 生年月日: {user_wishes.get('birthdate', '')}<br>
+            - 電話番号: {user_wishes.get('phone_number', '')}<br>
+            - 美容師免許: {user_wishes.get('license', '')}<br>
+            - MBTI: {user_wishes.get('mbti', '')}<br>
+            - 役職: {user_wishes.get('role', '')}<br>
+            - 希望エリア: {user_wishes.get('area_prefecture', '')} {user_wishes.get('area_detail', '')}<br>
+            - 職場満足度: {user_wishes.get('satisfaction', '')}<br>
+            - 興味のある待遇: {user_wishes.get('perk', '')}<br>
+            - 今の状況: {user_wishes.get('current_status', '')}<br>
+            - 転職希望時期: {user_wishes.get('timing', '')}<br>
+            - ユーザーID: {user_id}
+            <hr>
+        """
+        send_notification_email(subject, body)
+    except Exception as e:
+        print(f"初回登録の通知メール送信中にエラーが発生: {e}")
+
+    try:
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            welcome_message = ( "ご登録いただき、誠にありがとうございます！\n" "LUMINA Offerが、あなたにプロフィールを拝見してピッタリな『好待遇サロンの公認オファー』を、このLINEアカウントを通じてご連絡いたします。\n" "楽しみにお待ちください！" )
+            line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
+    except Exception as e:
+        print(f"ウェルカムメッセージの送信エラー: {e}")
+
+    if 'birthdate' in user_wishes and user_wishes['birthdate']:
+        try:
+            age = get_age_from_birthdate(user_wishes.get('birthdate'))
+            user_wishes['age'] = f"{(age // 10) * 10}代"
+        except (ValueError, TypeError):
+            user_wishes['age'] = ''
+            
+    try:
+        gc = gspread.service_account(filename=creds_path)
+        user_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
+        user_headers = user_management_sheet.row_values(1)
+        user_row_dict = { "ユーザーID": user_id, "登録日": datetime.now(JST).strftime('%Y/%m/%d'), "ステータス": 'オファー中', "氏名": user_wishes.get('full_name'), "性別": user_wishes.get('gender'), "生年月日": user_wishes.get('birthdate'), "電話番号": user_wishes.get('phone_number'), "MBTI": user_wishes.get('mbti'), "役職": user_wishes.get('role'), "希望エリア": user_wishes.get('area_prefecture'), "希望勤務地": user_wishes.get('area_detail'), "職場満足度": user_wishes.get('satisfaction'), "興味のある待遇": user_wishes.get('perk'), "現在の状況": user_wishes.get('current_status'), "転職希望時期": user_wishes.get('timing'), "美容師免許": user_wishes.get('license') }
+        profile_headers = user_headers[:16]
+        profile_row_values = [user_row_dict.get(h, '') for h in profile_headers]
+        cell = user_management_sheet.find(user_id, in_column=1)
+        if cell:
+            range_to_update = f'A{cell.row}:{chr(ord("A") + len(profile_row_values) - 1)}{cell.row}'
+            user_management_sheet.update(range_to_update, [profile_row_values])
+        else:
+            full_row = profile_row_values + [''] * (len(user_headers) - len(profile_headers))
+            user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
+    except Exception as e:
+        print(f"ユーザー管理シートへの書き込みエラー: {e}"); traceback.print_exc()
+
+    try:
+        user_wishes['userId'] = user_id
+        top_salons, reason = find_and_select_top_salons(user_wishes)
+        
+        if not top_salons:
+            print(f"ユーザーID {user_id} のオファー予約に失敗しました。理由: {reason}")
+            return jsonify({"status": "error", "message": "No salons found to schedule"}), 404
+
+        now_jst = datetime.now(JST)
+        cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
+        
+        if now_jst >= cutoff_time:
+            first_send_date = now_jst.date() + timedelta(days=1)
+        else:
+            first_send_date = now_jst.date()
+        
+        schedule = [
+            (first_send_date, "21:30"),
+            (first_send_date + timedelta(days=1), "12:30"),
+            (first_send_date + timedelta(days=1), "20:00"),
+            (first_send_date + timedelta(days=3), "12:30"),
+            (first_send_date + timedelta(days=4), "21:30")
+        ]
+        
+        rows_to_append = []
+        for i, salon in enumerate(top_salons):
+            if i < len(schedule):
+                send_date, send_time_str = schedule[i]
+                send_time_obj = datetime.strptime(send_time_str, "%H:%M").time()
+                send_at_datetime = datetime.combine(send_date, send_time_obj, tzinfo=JST)
+                send_at_iso = send_at_datetime.isoformat()
+                new_row = [user_id, salon['店舗ID'], send_at_iso, 'pending']
+                rows_to_append.append(new_row)
+
+        if rows_to_append:
+            gc = gspread.service_account(filename=creds_path)
+            queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
+            queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
+            print(f"ユーザーID {user_id} のために {len(rows_to_append)}件のオファーを予約しました。")
+
+    except Exception as e:
+        print(f"オファーの予約処理中にエラー: {e}")
+        traceback.print_exc()
+
+    return jsonify({"status": "success", "message": "Offer tasks scheduled successfully"})
+
+@app.route("/process-offer-queue", methods=['GET'])
+def process_offer_queue():
+    cron_secret = request.args.get('secret')
+    if cron_secret != os.environ.get('CRON_SECRET'):
+        return "Unauthorized", 401
+    
+    try:
+        now_iso = datetime.now(JST).isoformat()
+        
+        gc = gspread.service_account(filename=creds_path)
+        queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
+        user_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
+        salon_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
+        
+        all_queue = queue_sheet.get_all_records()
+        all_users = user_sheet.get_all_records(value_render_option='UNFORMATTED_VALUE')
+        all_salons = salon_sheet.get_all_records()
+
+        users_dict = {str(u['ユーザーID']): u for u in all_users}
+        salons_dict = {str(s['店舗ID']): s for s in all_salons}
+        
+        for idx, record in enumerate(all_queue):
+            row_num = idx + 2
+            if record.get('status') == 'pending' and record.get('send_at') <= now_iso:
+                user_id = str(record.get('user_id'))
+                salon_id = str(record.get('salon_id'))
+                
+                user_wishes = users_dict.get(user_id)
+                salon_info = salons_dict.get(salon_id)
+
+                if user_wishes and salon_info:
+                    print(f"{row_num}行目のオファーを処理します: {user_id} -> Salon {salon_id}")
+                    
+                    offer_message = generate_single_offer_message(user_wishes, salon_info)
+                    
+                    with ApiClient(configuration) as api_client:
+                        line_bot_api = MessagingApi(api_client)
+                        flex_container = FlexContainer.from_dict(create_salon_flex_message(salon_info, offer_message))
+                        messages = [FlexMessage(alt_text=f"{salon_info['店舗名']}からのオファー", contents=flex_container)]
+                        line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
+                    
+                    queue_sheet.update_cell(row_num, 4, 'sent')
+                else:
+                    print(f"ユーザー({user_id})またはサロン({salon_id})の情報が見つからず、スキップします。")
+                    queue_sheet.update_cell(row_num, 4, 'error')
+        
+        return "Offer queue processed.", 200
+    except Exception as e:
+        print(f"オファーキューの処理中にエラー: {e}")
+        traceback.print_exc()
+        return "An error occurred.", 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
