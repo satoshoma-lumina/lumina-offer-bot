@@ -29,7 +29,6 @@ CORS(app)
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
-# ▼▼▼▼▼ 新しいLIFF IDをここに追加しました ▼▼▼▼▼
 SALON_DETAIL_LIFF_ID = "2008066763-Exlv1lLY"
 SATO_EMAIL = "sato@lumina-beauty.co.jp"
 
@@ -223,10 +222,7 @@ def create_salon_flex_message(salon, offer_text):
     recruitment_type = salon.get("募集", "")
     salon_id = salon.get('店舗ID')
     schedule_liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
-    
-    # ▼▼▼▼▼ ここが変更点 ▼▼▼▼▼
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
-    # ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
 
     return {
         "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
@@ -265,6 +261,28 @@ def handle_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message_with_http_info( ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")]) )
+
+# ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
+@app.route("/api/salon-detail/<int:salon_id>", methods=['GET'])
+def get_salon_detail(salon_id):
+    try:
+        gc = gspread.service_account(filename=creds_path)
+        salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
+        all_salons = salon_master_sheet.get_all_records()
+        
+        # 文字列として比較することで、データ型の違いを吸収する
+        salon_info = next((s for s in all_salons if str(s['店舗ID']) == str(salon_id)), None)
+        
+        if salon_info:
+            return jsonify(salon_info)
+        else:
+            return jsonify({"error": "Salon not found"}), 404
+            
+    except Exception as e:
+        print(f"サロン詳細の取得中にエラー: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal server error"}), 500
+# ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
 
 @app.route("/submit-schedule", methods=['POST'])
 def submit_schedule():
