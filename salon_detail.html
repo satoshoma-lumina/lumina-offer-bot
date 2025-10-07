@@ -15,10 +15,10 @@
         .content { padding: 10px 20px; }
         h1 { font-size: 24px; margin-top: 0; }
         .catchphrase { font-size: 16px; font-weight: bold; color: #FF6B6B; margin-bottom: 20px; }
-        .description { line-height: 1.7; margin-bottom: 30px; white-space: pre-wrap; } /* white-spaceを追加して改行を反映 */
+        .description { line-height: 1.7; margin-bottom: 30px; white-space: pre-wrap; }
         .info-section { margin-bottom: 25px; }
         .info-section h2 { font-size: 18px; border-bottom: 2px solid #FF6B6B; padding-bottom: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        .info-section p { margin: 0; line-height: 1.6; white-space: pre-wrap; } /* white-spaceを追加して改行を反映 */
+        .info-section p { margin: 0; line-height: 1.6; white-space: pre-wrap; }
         .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 600px; margin: 0 auto; background-color: rgba(255, 255, 255, 0.9); padding: 15px 20px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
         .action-button { width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; text-align: center; text-decoration: none; display: block; }
         #loading, #error { text-align: center; padding: 50px; } #error { color: red; }
@@ -64,16 +64,17 @@
             </div>
         </div>
         <div class="footer-nav">
-            <a id="schedule-button" href="#" class="action-button">カジュアル面談の日程調整に進む</a>
+            <!-- ▼▼▼▼▼ この行の文言を変更しました ▼▼▼▼▼ -->
+            <a id="schedule-button" href="#" class="action-button">このサロンから話を聞いてみる</a>
+            <!-- ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ -->
         </div>
     </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
         async function main() {
-            // ▼▼▼▼▼ ご指定のLIFF IDを設定済みです ▼▼▼▼▼
             const liffId = "2008066763-Exlv1lLY";
-            const SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"; // 日程調整LIFFのID
+            const SCHEDULE_LIFF_ID = "2008066763-X5mxymoj";
             
             const loadingDiv = document.getElementById('loading');
             const errorDiv = document.getElementById('error');
@@ -94,7 +95,6 @@
                 }
                 const salon = await response.json();
 
-                // データをHTMLに反映
                 document.getElementById('salon-name').textContent = salon['店舗名'] || '情報なし';
                 document.getElementById('salon-catchphrase').textContent = salon['サロンの魅力キャッチコピー'] || '';
                 document.getElementById('salon-description').textContent = salon['サロン紹介文'] || '詳細情報はありません。';
@@ -105,7 +105,6 @@
                 const mainPhoto = document.getElementById('main-photo');
                 mainPhoto.src = salon['画像URL'] || 'https://placehold.co/600x400/EEE/31343C?text=No+Image';
 
-                // ギャラリー写真の作成
                 const photoUrls = [salon['画像URL'], salon['写真URL_2'], salon['写真URL_3']].filter(url => url);
                 const thumbnailsContainer = document.getElementById('thumbnails-container');
                 thumbnailsContainer.innerHTML = '';
@@ -121,7 +120,6 @@
                     thumbnailsContainer.appendChild(img);
                 });
 
-                // 日程調整ボタンのリンクを設定
                 const scheduleButton = document.getElementById('schedule-button');
                 scheduleButton.href = `https://liff.line.me/${SCHEDULE_LIFF_ID}?salonId=${salonId}`;
 
