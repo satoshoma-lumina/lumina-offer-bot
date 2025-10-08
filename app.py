@@ -105,8 +105,9 @@ def find_and_select_top_salons(user_wishes):
     try:
         prefecture = user_wishes.get("area_prefecture", "")
         detail_area = user_wishes.get("area_detail", "")
+        primary_area = detail_area.replace("　", " ").split(" ")[0]
         words_to_remove = ["周辺", "中心部", "あたり"]
-        cleaned_detail_area = detail_area
+        cleaned_detail_area = primary_area
         for word in words_to_remove:
             cleaned_detail_area = cleaned_detail_area.replace(word, "")
         full_area = f"{prefecture} {cleaned_detail_area.strip()}"
@@ -224,22 +225,7 @@ def create_salon_flex_message(salon, offer_text):
     schedule_liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
 
-    return {
-        "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
-        "body": { "type": "box", "layout": "vertical", "contents": [
-            { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" },
-            { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
-                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}
-            ]}
-        ]},
-        "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-            { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": detail_liff_url }},
-            { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": schedule_liff_url }, "color": "#FF6B6B"}
-        ], "flex": 0 }
-    }
+    return { "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" }, "body": { "type": "box", "layout": "vertical", "contents": [ { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" }, { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [ { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]} ]} ]}, "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [ { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": detail_liff_url }}, { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": schedule_liff_url }, "color": "#FF6B6B"} ], "flex": 0 } }
 
 def get_age_from_birthdate(birthdate):
     today = datetime.today()
@@ -262,27 +248,21 @@ def handle_message(event):
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message_with_http_info( ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")]) )
 
-# ▼▼▼▼▼ ここからが新しいコード ▼▼▼▼▼
 @app.route("/api/salon-detail/<int:salon_id>", methods=['GET'])
 def get_salon_detail(salon_id):
     try:
         gc = gspread.service_account(filename=creds_path)
         salon_master_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
         all_salons = salon_master_sheet.get_all_records()
-        
-        # 文字列として比較することで、データ型の違いを吸収する
         salon_info = next((s for s in all_salons if str(s['店舗ID']) == str(salon_id)), None)
-        
         if salon_info:
             return jsonify(salon_info)
         else:
             return jsonify({"error": "Salon not found"}), 404
-            
     except Exception as e:
         print(f"サロン詳細の取得中にエラー: {e}")
         traceback.print_exc()
         return jsonify({"error": "Internal server error"}), 500
-# ▲▲▲▲▲ 新しいコードここまで ▲▲▲▲▲
 
 @app.route("/submit-schedule", methods=['POST'])
 def submit_schedule():
