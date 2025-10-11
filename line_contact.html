@@ -8,25 +8,50 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; color: #333; }
         .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px 30px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { text-align: center; font-size: 22px; margin-bottom: 10px;}
-        h1 span { font-size: 14px; color: #FF6B6B; display: block; font-weight: bold; }
         p.sub-header { text-align: center; margin-bottom: 25px; line-height: 1.6; }
-        b#displayName { color: #FF6B6B; }
         .instruction-box { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fafafa; }
         .instruction-box summary { cursor: pointer; text-align: center; color: #007bff; font-weight: bold; }
-        
-        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
         .instruction-step { margin-top: 15px; }
         .instruction-step ol { padding-left: 25px; margin: 0; }
         .instruction-step li { font-size: 14px; line-height: 1.6; margin-bottom: 10px; }
         .instruction-step li:last-child { margin-bottom: 0; }
-        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
-
         textarea { width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; resize: vertical; margin-top: 10px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; }
-        .btn-submit { background-color: #FF6B6B; color: white; margin-top: 20px; }
-        button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; }
         #error { color: red; }
+
+        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
+        h1 span {
+            font-size: 14px;
+            color: #8aa1d1; /* グラデーションの濃い色に合わせる */
+            display: block;
+            font-weight: bold;
+        }
+        b#displayName {
+            color: #8aa1d1;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: opacity 0.3s;
+        }
+        .btn-submit {
+            margin-top: 20px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:disabled {
+            background-image: none;
+            background-color: #ccc;
+        }
+        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -46,7 +71,7 @@
                         <li>この画面の下にあるURL貼り付け欄にペーストして送信します。</li>
                     </ol>
                 </div>
-                </details>
+            </details>
         </div>
         
         <form id="lineContactForm">

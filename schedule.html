@@ -10,21 +10,42 @@
         h1 { text-align: center; color: #333; font-size: 22px; margin-bottom: 10px;}
         p { text-align: center; margin-bottom: 25px; line-height: 1.6; }
         .form-group { margin-bottom: 20px; }
-        .form-group h2 { font-size: 16px; border-bottom: 2px solid #FF6B6B; padding-bottom: 5px; margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 15px; } /* label style added for new field */
-        .radio-group label { display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; font-weight: normal; } /* reset font-weight for radio labels */
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 15px; }
+        .radio-group label { display: block; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; font-weight: normal; }
         .radio-group input[type="radio"] { margin-right: 10px; }
         .date-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
         .date-group strong { display: block; margin-bottom: 10px; }
         .time-inputs { display: flex; align-items: center; gap: 10px; }
         .time-inputs span { font-weight: bold; }
-        input[type="text"], input[type="date"], select { /* input[type="text"] added */
+        input[type="text"], input[type="date"], select {
             width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; background-color: #fff;
         }
-        button {
-            width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px;
-        }
         #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
+
+        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
+        .form-group h2 {
+            font-size: 16px;
+            border-bottom: 2px solid #8aa1d1; /* グラデーションの濃い色に合わせる */
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: opacity 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -42,12 +63,10 @@
                 </div>
             </div>
 
-            <!-- ★★★★★ ここからが変更点 ★★★★★ -->
             <div class="form-group" id="location-group" style="display: none;">
                 <label for="interviewLocation">ご希望の面談場所（駅名など）</label>
                 <input type="text" id="interviewLocation" name="interviewLocation" placeholder="例：渋谷駅">
             </div>
-            <!-- ★★★★★ ここまでが変更点 ★★★★★ -->
 
             <div class="form-group">
                 <h2>ご希望の候補日時を3つ入力してください</h2>
@@ -78,7 +97,7 @@
                         <select name="endTime3"></select>
                     </div>
                 </div>
-                </div>
+            </div>
             <button type="submit" id="submit-button">次のアンケートに進む</button>
         </form>
         <div id="loading">送信中...</div>
@@ -118,7 +137,6 @@
             const profile = await liff.getProfile();
             const userId = profile.userId;
             
-            // ★★★★★ ここからが変更点 ★★★★★
             const interviewMethodRadios = document.querySelectorAll('input[name="interviewMethod"]');
             const locationGroup = document.getElementById('location-group');
             const locationInput = document.getElementById('interviewLocation');
@@ -135,7 +153,6 @@
                     }
                 });
             });
-            // ★★★★★ ここまでが変更点 ★★★★★
 
             const urlParams = new URLSearchParams(window.location.search);
             const salonId = urlParams.get('salonId');
@@ -150,9 +167,7 @@
                     userId: userId,
                     salonId: salonId,
                     interviewMethod: formData.get('interviewMethod'),
-                    // ★★★★★ ここからが変更点 ★★★★★
                     interviewLocation: formData.get('interviewLocation') || '',
-                    // ★★★★★ ここまでが変更点 ★★★★★
                     date1: formData.get('date1'),
                     startTime1: formData.get('startTime1'),
                     endTime1: formData.get('endTime1'),
@@ -195,4 +210,3 @@
     </script>
 </body>
 </html>
-

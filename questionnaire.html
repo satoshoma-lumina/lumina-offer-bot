@@ -11,15 +11,42 @@
         h1 { font-size: 22px; }
         h2 { font-size: 14px; font-weight: normal; color: #666; margin-top: -10px; margin-bottom: 25px; }
         .form-section { margin-bottom: 30px; }
-        .form-section-title { font-size: 12px; color: #FF6B6B; font-weight: bold; margin-bottom: 15px; text-align: center; }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 15px; }
         input[type="text"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
         .checkbox-group label, .radio-group label { font-weight: normal; display: block; margin-bottom: 10px; }
         .checkbox-group input, .radio-group input { margin-right: 8px; }
-        button { width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
-        button:disabled { background-color: #ccc; }
         #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
+
+        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
+        .form-section-title {
+            font-size: 12px;
+            color: #8aa1d1; /* グラデーションの濃い色に合わせる */
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: opacity 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        button:disabled {
+            background-image: none;
+            background-color: #ccc;
+        }
+        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -147,12 +174,9 @@
                     checkbox.addEventListener('change', () => {
                         const checkedCount = document.querySelectorAll('input[name="q6_priorities"]:checked').length;
                         if (checkedCount > 3) {
-                            // alert() はLIFFでは表示されないことがあるため、エラーメッセージ表示に変更
-                            errorDiv.textContent = '選択肢は3つまでです。';
-                            errorDiv.style.display = 'block';
+                            // alert()の代わりにカスタムメッセージを表示するなどの代替案を検討
+                            console.log('3つまで選択可能です。');
                             checkbox.checked = false;
-                            // ユーザーに分かりやすいように、少し時間をおいてメッセージを消す
-                            setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
                         }
                     });
                 });
@@ -183,15 +207,12 @@
                             body: JSON.stringify(answers)
                         });
                         
-                        // ★★★★★ ここが修正点 ★★★★★
-                        // 新しいフローに合わせて、送信が成功したらLIFFを閉じるだけにする
                         if (response.ok) {
                             liff.closeWindow();
                         } else {
                             const errorData = await response.json();
                             throw new Error(errorData.message || 'サーバーでエラーが発生しました。');
                         }
-                        // ★★★★★ 修正点ここまで ★★★★★
 
                     } catch (error) {
                         loadingDiv.style.display = 'none';

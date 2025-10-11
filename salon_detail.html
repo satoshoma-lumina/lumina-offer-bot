@@ -11,17 +11,52 @@
         .main-image img { width: 100%; height: 250px; object-fit: cover; }
         .thumbnails { display: flex; gap: 5px; padding: 10px; }
         .thumbnails img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
-        .thumbnails img.active { border-color: #FF6B6B; }
         .content { padding: 10px 20px; }
         h1 { font-size: 24px; margin-top: 0; }
-        .catchphrase { font-size: 16px; font-weight: bold; color: #FF6B6B; margin-bottom: 20px; }
         .description { line-height: 1.7; margin-bottom: 30px; white-space: pre-wrap; }
         .info-section { margin-bottom: 25px; }
-        .info-section h2 { font-size: 18px; border-bottom: 2px solid #FF6B6B; padding-bottom: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
         .info-section p { margin: 0; line-height: 1.6; white-space: pre-wrap; }
         .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 600px; margin: 0 auto; background-color: rgba(255, 255, 255, 0.9); padding: 15px 20px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
-        .action-button { width: 100%; padding: 15px; background-color: #FF6B6B; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; text-align: center; text-decoration: none; display: block; }
         #loading, #error { text-align: center; padding: 50px; } #error { color: red; }
+        
+        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
+        .thumbnails img.active {
+            border-color: #8aa1d1;
+        }
+        .catchphrase {
+            font-size: 16px;
+            font-weight: bold;
+            color: #8aa1d1;
+            margin-bottom: 20px;
+        }
+        .info-section h2 {
+            font-size: 18px;
+            border-bottom: 2px solid #8aa1d1;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .action-button {
+            width: 100%;
+            padding: 15px;
+            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            transition: opacity 0.3s;
+        }
+        .action-button:hover {
+            opacity: 0.9;
+        }
+        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -64,9 +99,7 @@
             </div>
         </div>
         <div class="footer-nav">
-            <!-- ▼▼▼▼▼ この行の文言を変更しました ▼▼▼▼▼ -->
             <a id="schedule-button" href="#" class="action-button">このサロンから話を聞いてみる</a>
-            <!-- ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ -->
         </div>
     </div>
 

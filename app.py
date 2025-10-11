@@ -225,7 +225,24 @@ def create_salon_flex_message(salon, offer_text):
     schedule_liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
 
-    return { "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" }, "body": { "type": "box", "layout": "vertical", "contents": [ { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" }, { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [ { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]} ]} ]}, "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [ { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": detail_liff_url }}, { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": schedule_liff_url }, "color": "#FF6B6B"} ], "flex": 0 } }
+    return {
+        "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
+        "body": { "type": "box", "layout": "vertical", "contents": [
+            { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" },
+            { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
+                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
+                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]},
+                { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}
+            ]}
+        ]},
+        "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
+            { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": detail_liff_url }},
+            # ▼▼▼▼▼ ここが変更点 ▼▼▼▼▼
+            { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": schedule_liff_url }, "color": "#8aa1d1"}
+            # ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
+        ], "flex": 0 }
+    }
 
 def get_age_from_birthdate(birthdate):
     today = datetime.today()
@@ -315,7 +332,7 @@ def submit_questionnaire():
                 with ApiClient(configuration) as api_client:
                     line_bot_api = MessagingApi(api_client)
                     liff_url_for_contact = f"https://liff.line.me/{LINE_CONTACT_LIFF_ID}"
-                    flex_message_body = {"type": "bubble","body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": "アンケートへのご回答、ありがとうございます！","weight": "bold","size": "md","wrap": True},{"type": "text","text": "最後に、サロン担当者があなたに直接連絡できるよう、ご自身のLINE連絡先をご登録ください。","margin": "md","size": "sm","color": "#666666","wrap": True}]},"footer": {"type": "box","layout": "vertical","spacing": "sm","contents": [{"type": "button","style": "primary","height": "sm","action": {"type": "uri","label": "LINE連絡先を登録する","uri": liff_url_for_contact},"color": "#FF6B6B"}],"flex": 0}}
+                    flex_message_body = {"type": "bubble","body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": "アンケートへのご回答、ありがとうございます！","weight": "bold","size": "md","wrap": True},{"type": "text","text": "最後に、サロン担当者があなたに直接連絡できるよう、ご自身のLINE連絡先をご登録ください。","margin": "md","size": "sm","color": "#666666","wrap": True}]},"footer": {"type": "box","layout": "vertical","spacing": "sm","contents": [{"type": "button","style": "primary","height": "sm","action": {"type": "uri","label": "LINE連絡先を登録する","uri": liff_url_for_contact},"color": "#8aa1d1"}],"flex": 0}}
                     messages = [FlexMessage(alt_text="LINE連絡先の登録をお願いします。", contents=FlexContainer.from_dict(flex_message_body))]
                     line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
                     print(f"ユーザーID {user_id} に連絡先登録を促すプッシュメッセージを送信しました。")
