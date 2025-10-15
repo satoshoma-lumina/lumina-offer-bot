@@ -25,14 +25,14 @@
         /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
         .form-group h2 {
             font-size: 16px;
-            border-bottom: 2px solid #8aa1d1; /* グラデーションの濃い色に合わせる */
+            border-bottom: 2px solid #F37335; /* グラデーションの濃いオレンジ */
             padding-bottom: 5px;
             margin-bottom: 15px;
         }
         button {
             width: 100%;
             padding: 15px;
-            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            background-image: linear-gradient(to right, #FDC830, #F37335);
             color: white;
             border: none;
             border-radius: 5px;
@@ -44,6 +44,10 @@
         }
         button:hover {
             opacity: 0.9;
+        }
+        button:disabled {
+            background-image: none;
+            background-color: #ccc;
         }
         /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
     </style>

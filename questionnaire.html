@@ -21,7 +21,7 @@
         /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
         .form-section-title {
             font-size: 12px;
-            color: #8aa1d1; /* グラデーションの濃い色に合わせる */
+            color: #F37335; /* グラデーションの濃いオレンジ */
             font-weight: bold;
             margin-bottom: 15px;
             text-align: center;
@@ -29,7 +29,7 @@
         button {
             width: 100%;
             padding: 15px;
-            background-image: linear-gradient(to right, #bddcf3, #8aa1d1);
+            background-image: linear-gradient(to right, #FDC830, #F37335);
             color: white;
             border: none;
             border-radius: 5px;
@@ -174,9 +174,17 @@
                     checkbox.addEventListener('change', () => {
                         const checkedCount = document.querySelectorAll('input[name="q6_priorities"]:checked').length;
                         if (checkedCount > 3) {
-                            // alert()の代わりにカスタムメッセージを表示するなどの代替案を検討
-                            console.log('3つまで選択可能です。');
                             checkbox.checked = false;
+                            // ユーザーにフィードバックするための簡単なメッセージ表示
+                            if (!document.getElementById('checkbox-alert')) {
+                                const alertMsg = document.createElement('div');
+                                alertMsg.id = 'checkbox-alert';
+                                alertMsg.textContent = '選択は3つまでです。';
+                                alertMsg.style.color = 'red';
+                                alertMsg.style.textAlign = 'center';
+                                checkbox.parentElement.parentElement.appendChild(alertMsg);
+                                setTimeout(() => alertMsg.remove(), 2000);
+                            }
                         }
                     });
                 });
