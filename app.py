@@ -282,25 +282,22 @@ def handle_follow(event):
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             
-            # ユーザープロファイルを取得
-            try:
-                profile = line_bot_api.get_profile(event.source.user_id)
-                display_name = profile.display_name
-            except Exception as e:
-                display_name = "ゲスト"
-                print(f"ユーザープロファイルの取得に失敗: {e}")
+            # (ユーザー名 f"{display_name}さん" を削除したため、APIコールも削除)
 
-            # ★★★ ご指定のLIFF URLに書き換えました ★★★
+            # 登録フォームのLIFF URL
             PROFILE_LIFF_URL = "https://liff.line.me/2008066763-ZJ72p7OJ" 
+            
+            # ★★★ (変更点 ④) ご指定のGitHub URLをRaw URLに変換しました ★★★
+            YOUR_NEW_IMAGE_URL = "https://raw.githubusercontent.com/satoshoma-lumina/lumina-offer-bot/f69936cd3746d9504b598957af16561b2aaefd91/%E3%82%B9%E3%82%AD%E3%83%9E%C3%97MBTI%E8%A8%B4%E6%B1%82_1040%C3%971040.png"
 
             # 送信するFlexMessageの定義
             flex_message_json = {
                 "type": "bubble",
                 "hero": {
                     "type": "image",
-                    "url": "https://storage.googleapis.com/lumina-offer-images/Lumina_Offer_Card_1.png", # 画像URLは適宜変更してください
+                    "url": YOUR_NEW_IMAGE_URL, # ★ 変更点 ④
                     "size": "full",
-                    "aspectRatio": "20:13",
+                    "aspectRatio": "1040:1040", # ★ 画像サイズ 1040x1040 に合わせて 1:1 に変更
                     "aspectMode": "cover"
                 },
                 "body": {
@@ -309,26 +306,23 @@ def handle_follow(event):
                     "contents": [
                         {
                             "type": "text",
-                            "text": f"{display_name}さん",
+                            "text": "”3分”でオファーが届く！", # ★ 変更点 ①
                             "weight": "bold",
-                            "size": "xl"
+                            "size": "xl",
+                            "align": "center"
                         },
                         {
                             "type": "text",
-                            "text": "ご登録ありがとうございます！",
-                            "weight": "bold",
-                            "size": "md",
-                            "margin": "md"
-                        },
-                        {
-                            "type": "text",
-                            "text": "下のボタンからプロフィールを登録して、好待遇サロンからの特別なオファーを受け取りましょう。",
+                            "text": "業界初！MBTIで相性マッチ", # ★ 変更点 ②
                             "wrap": True,
-                            "margin": "md",
-                            "size": "sm",
-                            "color": "#666666"
+                            "margin": "lg",
+                            "size": "md",
+                            "color": "#666666",
+                            "align": "center"
                         }
-                    ]
+                    ],
+                    "paddingTop": "xl", # テキストが見やすいよう調整
+                    "paddingBottom": "lg" # テキストが見やすいよう調整
                 },
                 "footer": {
                     "type": "box",
@@ -337,17 +331,19 @@ def handle_follow(event):
                         {
                             "type": "button",
                             "action": {
-                                "type": "uri", # ← "text" から "uri" に変更
-                                "label": "プロフィールを登録する",
-                                "uri": PROFILE_LIFF_URL # ← LIFF URLを指定
+                                "type": "uri",
+                                "label": "今すぐMBTI入力▶▶", # ★ 変更点 ③
+                                "uri": PROFILE_LIFF_URL
                             },
                             "style": "primary",
-                            "color": "#F37335", # ドキュメントにあった色
-                            "height": "sm"
+                            "color": "#F37335",
+                            "height": "sm",
+                            "margin": "sm"
                         }
                     ],
                     "spacing": "sm",
-                    "flex": 0
+                    "flex": 0,
+                    "paddingAll": "md" # ボタン周りの余白を調整
                 }
             }
 
@@ -641,22 +637,19 @@ def process_offer_queue():
                         messages = [FlexMessage(alt_text=f"{salon_info['店舗名']}からのオファー", contents=flex_container)]
                         line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
                     
-                    # ▼▼▼▼▼ ここが修正点 ▼▼▼▼▼
                     # オファー管理シートにも記録
                     try:
                         today_str = datetime.now(JST).strftime('%Y/%m/%d')
-                        # オファー管理シートの列数(15列)に合わせて空文字列を追加
                         new_offer_row = [
                             user_id,
                             salon_info.get('店舗ID'),
                             today_str,
                             "送信済み"
-                        ] + [''] * 11 # 残り11列分を空で埋める
+                        ] + [''] * 11 
                         offer_management_sheet.append_row(new_offer_row, value_input_option='USER_ENTERED')
                         print(f"オファー管理シートに記録しました: {user_id} -> {salon_info.get('店舗ID')}")
                     except Exception as e:
                         print(f"オファー管理シートへの書き込み中にエラー: {e}")
-                    # ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲
 
                     queue_sheet.update_cell(row_num, 4, 'sent')
                 else:
