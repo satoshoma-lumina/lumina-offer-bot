@@ -297,8 +297,8 @@ def handle_follow(event):
                     "type": "image",
                     "url": YOUR_NEW_IMAGE_URL, # ★ 変更点 ④
                     "size": "full",
-                    "aspectRatio": "1:1", # ★ 画像サイズ 1040x1040 に合わせて 1:1 に変更
-                    "aspectMode": "fit" # ★★★ "cover" から "fit" に変更 ★★★
+                    "aspectRatio": "1024:678", # ★★★ ご指定のサイズ 1024x678px に合わせました ★★★
+                    "aspectMode": "fit" # ★ "fit" のまま（画像全体を表示）
                 },
                 "body": {
                     "type": "box",
