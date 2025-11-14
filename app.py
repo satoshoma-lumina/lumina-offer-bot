@@ -42,7 +42,6 @@ handler = WebhookHandler(os.environ.get('YOUR_CHANNEL_SECRET'))
 # タイムゾーンの定義
 JST = timezone(timedelta(hours=+9))
 
-# ★★★ 修正箇所 1 ★★★
 # ステップ2で登録したGASのWebhook URLを環境変数から読み込む
 GAS_WEBHOOK_URL = os.environ.get('GAS_WEBHOOK_URL')
 
@@ -255,48 +254,121 @@ def handle_message(event):
         line_bot_api.reply_message_with_http_info( ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")]) )
 
 
-# ★★★ 修正箇所 2 ★★★
+# ★★★ ここからが修正箇所です ★★★
 @handler.add(FollowEvent)
 def handle_follow(event):
     """
     LINEで「友達追加」されたときの処理
     1. GASに通知してスプレッドシートに日時とIDを記録
-    2. ユーザーに登録を促すメッセージを返信
+    2. ユーザーに登録を促すFlexMessageを返信
     """
     
     # 1. GASにスプレッドシートへの書き込みを依頼
     if GAS_WEBHOOK_URL:
         try:
-            # GASのdoGetで設定したパラメータ名(userId, timestamp)に合わせる
             params_to_gas = {
                 'userId': event.source.user_id,
-                'timestamp': event.timestamp  # event.timestamp はミリ秒です
+                'timestamp': event.timestamp
             }
-            
-            # GASのURLをGETリクエストで呼び出す (タイムアウトを5秒に設定)
             requests.get(GAS_WEBHOOK_URL, params=params_to_gas, timeout=5)
             print(f"GASへのFollowイベント通知成功: {event.source.user_id}")
-
         except Exception as e:
-            # GASへの通知が失敗しても、LINEの応答は続行する
             print(f"GASへのFollowイベント通知に失敗: {e}")
     else:
         print("GAS_WEBHOOK_URLが設定されていません。スプレッドシートへの記録はスキップされます。")
 
     # 2. ユーザーに登録を促すメッセージを送信
-    # (handle_messageと同じメッセージを返信して、次の行動を促す)
     try:
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
+            
+            # ユーザープロファイルを取得
+            try:
+                profile = line_bot_api.get_profile(event.source.user_id)
+                display_name = profile.display_name
+            except Exception as e:
+                display_name = "ゲスト"
+                print(f"ユーザープロファイルの取得に失敗: {e}")
+
+            # ★★★ ご指定のLIFF URLに書き換えました ★★★
+            PROFILE_LIFF_URL = "https://liff.line.me/2008066763-ZJ72p7OJ" 
+
+            # 送信するFlexMessageの定義
+            flex_message_json = {
+                "type": "bubble",
+                "hero": {
+                    "type": "image",
+                    "url": "https://storage.googleapis.com/lumina-offer-images/Lumina_Offer_Card_1.png", # 画像URLは適宜変更してください
+                    "size": "full",
+                    "aspectRatio": "20:13",
+                    "aspectMode": "cover"
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": f"{display_name}さん",
+                            "weight": "bold",
+                            "size": "xl"
+                        },
+                        {
+                            "type": "text",
+                            "text": "ご登録ありがとうございます！",
+                            "weight": "bold",
+                            "size": "md",
+                            "margin": "md"
+                        },
+                        {
+                            "type": "text",
+                            "text": "下のボタンからプロフィールを登録して、好待遇サロンからの特別なオファーを受け取りましょう。",
+                            "wrap": True,
+                            "margin": "md",
+                            "size": "sm",
+                            "color": "#666666"
+                        }
+                    ]
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "button",
+                            "action": {
+                                "type": "uri", # ← "text" から "uri" に変更
+                                "label": "プロフィールを登録する",
+                                "uri": PROFILE_LIFF_URL # ← LIFF URLを指定
+                            },
+                            "style": "primary",
+                            "color": "#F37335", # ドキュメントにあった色
+                            "height": "sm"
+                        }
+                    ],
+                    "spacing": "sm",
+                    "flex": 0
+                }
+            }
+
+            # FlexMessageを送信
             line_bot_api.reply_message_with_http_info(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text="ご登録ありがとうございます。\nリッチメニューからプロフィールをご入力ください。")]
+                    messages=[
+                        FlexMessage(
+                            alt_text="LUMINA Offer プロフィール登録",
+                            contents=FlexContainer.from_dict(flex_message_json)
+                        )
+                    ]
                 )
             )
+            
     except Exception as e:
         print(f"Followイベントへの返信メッセージ送信エラー: {e}")
-# ★★★ ここまでが新しく追加する関数です ★★★
+        traceback.print_exc()
+
+# ★★★ 修正箇所はここまでです ★★★
 
 
 @app.route("/api/salon-detail/<int:salon_id>", methods=['GET'])
@@ -331,7 +403,7 @@ def submit_schedule():
                 row_to_update = cell.row
                 break
         if row_to_update != -1:
-            interview_location = data.get('interviewLocation', '') 
+            interview_location = data.get('interviewLocation', '')
             update_values = [ '日程調整中', data.get('interviewMethod', ''), data.get('date1', ''), data.get('startTime1', ''), data.get('endTime1', ''), data.get('date2', ''), data.get('startTime2', ''), data.get('endTime2', ''), data.get('date3', ''), data.get('startTime3', ''), data.get('endTime3', ''), interview_location ]
             offer_management_sheet.update(f'D{row_to_update}:O{row_to_update}', [update_values])
             subject = "【LUMINAオファー】面談日程の新規登録がありました"
@@ -575,9 +647,9 @@ def process_offer_queue():
                         today_str = datetime.now(JST).strftime('%Y/%m/%d')
                         # オファー管理シートの列数(15列)に合わせて空文字列を追加
                         new_offer_row = [
-                            user_id, 
-                            salon_info.get('店舗ID'), 
-                            today_str, 
+                            user_id,
+                            salon_info.get('店舗ID'),
+                            today_str,
                             "送信済み"
                         ] + [''] * 11 # 残り11列分を空で埋める
                         offer_management_sheet.append_row(new_offer_row, value_input_option='USER_ENTERED')
