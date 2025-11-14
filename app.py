@@ -288,7 +288,7 @@ def handle_follow(event):
             PROFILE_LIFF_URL = "https://liff.line.me/2008066763-ZJ72p7OJ" 
             
             # ★★★ (変更点 ④) ご指定のGitHub URLをRaw URLに変換しました ★★★
-            YOUR_NEW_IMAGE_URL = "https://raw.githubusercontent.com/satoshoma-lumina/lumina-offer-bot/f69936cd3746d9504b598957af16561b2aaefd91/%E3%82%B9%E3%82%AD%E3%83%9E%C3%97MBTI%E8%A8%B4%E6%B1%82_1040%C3%971040.png"
+            YOUR_NEW_IMAGE_URL = "https://raw.githubusercontent.com/satoshoma-lumina/lumina-offer-bot/4c57f959238f64d2254550c2347db1d9a625a435/%E3%82%B9%E3%82%AD%E3%83%9E%C3%97MBTI%E8%A8%B4%E6%B1%82_%E6%95%B0%E5%AD%97%E5%A4%89%E6%9B%B4Vr.png"
 
             # 送信するFlexMessageの定義
             flex_message_json = {
