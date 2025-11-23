@@ -1,272 +1,258 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロフィール登録</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
-        input[type="text"], input[type="date"], input[type="tel"], select {
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px;
-        }
-        .birthdate-selects { display: flex; gap: 10px; }
-        .birthdate-selects select { flex: 1; }
-        
-        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
-        button {
-            width: 100%;
-            padding: 12px;
-            background-image: linear-gradient(to right, #FDC830, #F37335);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: opacity 0.3s;
-        }
-        button:hover {
-            opacity: 0.9;
-        }
-        button:disabled {
-            background-image: none;
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
-
-        #loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プロフィール登録</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f7f7f7; }
+.container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+h1 { text-align: center; color: #333; }
+.form-group { margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+input[type="text"], input[type="date"], input[type="tel"], select {
+width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px;
+}
+/* 生年月日入力用のスタイル */
+.birthdate-selects { display: flex; gap: 10px; }
+.birthdate-selects select { flex: 1; }
+button {
+width: 100%; padding: 12px; background-color: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;
+}
+#loading, #error { text-align: center; margin-top: 15px; display: none; } #error { color: red; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>プロフィール登録</h1>
-        <form id="profileForm">
-            <div class="form-group">
-                <label for="full_name">名前（フルネーム）</label>
-                <input type="text" id="full_name" name="full_name" required>
-            </div>
-            <div class="form-group">
-                <label for="gender">性別</label>
-                <select id="gender" name="gender" required>
-                    <option value="">選択してください</option>
-                    <option value="男性">男性</option> <option value="女性">女性</option> <option value="その他">その他</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>生年月日</label>
-                <div class="birthdate-selects">
-                    <select id="birth_year" name="birth_year" required></select>
-                    <select id="birth_month" name="birth_month" required></select>
-                    <select id="birth_day" name="birth_day" required></select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="phone_number">電話番号</label>
-                <input type="tel" id="phone_number" name="phone_number" required>
-            </div>
-            <div class="form-group">
-                <label for="license">美容師免許</label>
-                <select id="license" name="license" required>
-                    <option value="">選択してください</option>
-                    <option value="取得済み">取得済み</option>
-                    <option value="未取得（学生・通信含む）">未取得（学生・通信含む）</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="mbti">MBTI</label>
-                <select id="mbti" name="mbti" required>
-                     <option value="">選択してください</option>
-                    <option value="ISTJ">ISTJ</option> <option value="ISFJ">ISFJ</option> <option value="INFJ">INFJ</option> <option value="INTJ">INTJ</option>
-                    <option value="ISTP">ISTP</option> <option value="ISFP">ISFP</option> <option value="INFP">INFP</option> <option value="INTP">INTP</option>
-                    <option value="ESTP">ESTP</option> <option value="ESFP">ESFP</option> <option value="ENFP">ENFP</option> <option value="ENTP">ENTP</option>
-                    <option value="ESTJ">ESTJ</option> <option value="ESFJ">ESFJ</option> <option value="ENFJ">ENFJ</option> <option value="ENTJ">ENTJ</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="role">役職</label>
-                <select id="role" name="role" required>
-                    <option value="">選択してください</option>
-                    <option value="アシスタント">アシスタント</option>
-                    <option value="ジュニアスタイリスト">ジュニアスタイリスト</option>
-                    <option value="スタイリスト">スタイリスト</option>
-                    <option value="店長/副店長">店長/副店長</option>
-                    <option value="マネージャー以上">マネージャー以上</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="area_prefecture">希望エリア（都道府県）</label>
-                <select id="area_prefecture" name="area_prefecture" required>
-                    <option value="">選択してください</option>
-                    <option value="北海道">北海道</option><option value="青森県">青森県</option><option value="岩手県">岩手県</option><option value="宮城県">宮城県</option><option value="秋田県">秋田県</option><option value="山形県">山形県</option><option value="福島県">福島県</option>
-                    <option value="茨城県">茨城県</option><option value="栃木県">栃木県</option><option value="群馬県">群馬県</option><option value="埼玉県">埼玉県</option><option value="千葉県">千葉県</option><option value="東京都">東京都</option><option value="神奈川県">神奈川県</option>
-                    <option value="新潟県">新潟県</option><option value="富山県">富山県</option><option value="石川県">石川県</option><option value="福井県">福井県</option><option value="山梨県">山梨県</option><option value="長野県">長野県</option><option value="岐阜県">岐阜県</option><option value="静岡県">静岡県</option><option value="愛知県">愛知県</option>
-                    <option value="三重県">三重県</option><option value="滋賀県">滋賀県</option><option value="京都府">京都府</option><option value="大阪府">大阪府</option><option value="兵庫県">兵庫県</option><option value="奈良県">奈良県</option><option value="和歌山県">和歌山県</option>
-                    <option value="鳥取県">鳥取県</option><option value="島根県">島根県</option><option value="岡山県">岡山県</option><option value="広島県">広島県</option><option value="山口県">山口県</option>
-                    <option value="徳島県">徳島県</option><option value="香川県">香川県</option><option value="愛媛県">愛媛県</option><option value="高知県">高知県</option>
-                    <option value="福岡県">福岡県</option><option value="佐賀県">佐賀県</option><option value="長崎県">長崎県</option><option value="熊本県">熊本県</option><option value="大分県">大分県</option><option value="宮崎県">宮崎県</option><option value="鹿児島県">鹿児島県</option><option value="沖縄県">沖縄県</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="area_detail">希望勤務地（駅名、市区町村など）</label>
-                <input type="text" id="area_detail" name="area_detail" placeholder="例：渋谷駅、新宿区、横浜市" required>
-            </div>
-            <div class="form-group">
-                <label for="satisfaction">現在の職場満足度</label>
-                <select id="satisfaction" name="satisfaction" required>
-                    <option value="">選択してください</option>
-                    <option value="とても満足している">とても満足している</option>
-                    <option value="まあまあ満足している">まあまあ満足している</option>
-                    <option value="どちらでもない">どちらでもない</option>
-                    <option value="あまり満足していない">あまり満足していない</option>
-                    <option value="全く満足していない">全く満足していない</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="perk">最も興味のある待遇</label>
-                <select id="perk" name="perk" required>
-                    <option value="">選択してください</option>
-                    <option value="高収入">高収入</option>
-                    <option value="社会保険完備">社会保険完備</option>
-                    <option value="完全週休2日制">完全週休2日制</option>
-                    <option value="土日休み可能">土日休み可能</option>
-                    <option value="シフト/休みが自由">シフト/休みが自由</option>
-                    <option value="教育体制充実">教育体制充実</option>
-                    <option value="新規客が多い">新規客が多い</option>
-                    <option value="大手サロン">大手サロン</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="current_status">今の状況</label>
-                <select id="current_status" name="current_status" required>
-                    <option value="">選択してください</option>
-                    <option value="時間がなくて動けていない">時間がなくて動けていない</option>
-                    <option value="何から始めたらいいか分からない">何から始めたらいいか分からない</option>
-                    <option value="求人を見ているが行動できていない">求人を見ているが行動できていない</option>
-                    <option value="興味はあるが本気ではない">興味はあるが本気ではない</option>
-                    <option value="特に困っていない">特に困っていない</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="timing">転職希望時期</label>
-                <select id="timing" name="timing" required>
-                    <option value="">選択してください</option>
-                    <option value="すぐにでも">すぐにでも</option>
-                    <option value="1ヶ月以内">1ヶ月以内</option>
-                    <option value="3ヶ月以内">3ヶ月以内</option>
-                    <option value="半年以内">半年以内</option>
-                    <option value="良いサロンがあれば検討したい">良いサロンがあれば検討したい</option>
-                    <option value="まだ考え中">まだ考え中</option>
-                </select>
-            </div>
-            <button type="submit" id="submit-button">オファーを受け取る</button>
-        </form>
-        <div id="loading">送信中...</div>
-        <div id="error"></div>
-    </div>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script>
-        function setupBirthdateSelectors() {
-            const yearSelect = document.getElementById('birth_year');
-            const monthSelect = document.getElementById('birth_month');
-            const daySelect = document.getElementById('birth_day');
-            function updateDays() {
-                const year = parseInt(yearSelect.value);
-                const month = parseInt(monthSelect.value);
-                const currentDay = daySelect.value;
-                daySelect.innerHTML = '<option value="">日</option>';
-                if (year && month) {
-                    const daysInMonth = new Date(year, month, 0).getDate();
-                    for (let i = 1; i <= daysInMonth; i++) {
-                        daySelect.innerHTML += `<option value="${i}">${i}</option>`;
-                    }
-                    if (currentDay <= daysInMonth) {
-                        daySelect.value = currentDay;
-                    }
-                }
-            }
-            const currentYear = new Date().getFullYear();
-            yearSelect.innerHTML = '<option value="">年</option>';
-            for (let i = currentYear - 18; i >= currentYear - 60; i--) {
-                yearSelect.innerHTML += `<option value="${i}">${i}</option>`;
-            }
-            monthSelect.innerHTML = '<option value="">月</option>';
-            for (let i = 1; i <= 12; i++) {
-                monthSelect.innerHTML += `<option value="${i}">${i}</option>`;
-            }
-            daySelect.innerHTML = '<option value="">日</option>';
-            yearSelect.addEventListener('change', updateDays);
-            monthSelect.addEventListener('change', updateDays);
-        }
-
-        async function main() {
-            setupBirthdateSelectors();
-            const liffId = "2008066763-ZJ72p7OJ";
-            const endpointUrl = "https://lumina-offer-bot-new.onrender.com/trigger-offer";
-            try {
-                await liff.init({ liffId: liffId });
-                if (!liff.isLoggedIn()) { liff.login(); return; }
-                const profile = await liff.getProfile();
-                const userId = profile.userId;
-                
-                const form = document.getElementById('profileForm');
-                const submitButton = document.getElementById('submit-button');
-                const loadingDiv = document.getElementById('loading');
-                const errorDiv = document.getElementById('error');
-                
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    submitButton.disabled = true;
-                    errorDiv.style.display = 'none';
-
-                    loadingDiv.textContent = '送信中...30秒ほどお待ちください';
-                    loadingDiv.style.display = 'block';
-
-                    const formData = new FormData(form);
-                    const wishes = {};
-                    for (const [key, value] of formData.entries()) {
-                        wishes[key] = value;
-                    }
-                    const year = wishes.birth_year;
-                    const month = String(wishes.birth_month).padStart(2, '0');
-                    const day = String(wishes.birth_day).padStart(2, '0');
-                    wishes.birthdate = `${year}-${month}-${day}`;
-                    delete wishes.birth_year;
-                    delete wishes.birth_month;
-                    delete wishes.birth_day;
-                    const payload = { userId: userId, wishes: wishes };
-
-                    try {
-                        const response = await fetch(endpointUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', },
-                            body: JSON.stringify(payload),
-                        });
-
-                        if (response.ok) {
-                            liff.closeWindow();
-                        } else {
-                            const errorData = await response.json();
-                            throw new Error(errorData.message || 'サーバーでエラーが発生しました。');
-                        }
-                    } catch (error) {
-                        loadingDiv.style.display = 'none';
-                        errorDiv.textContent = `送信に失敗しました: ${error.message}`;
-                        errorDiv.style.display = 'block';
-                        submitButton.disabled = false;
-                    }
-                });
-            } catch (error) {
-                document.getElementById('error').textContent = `ページの初期化に失敗しました。ページを再読み込みしてください。`;
-                document.getElementById('error').style.display = 'block';
-            }
-        }
-        main();
-    </script>
+<div class="container">
+<h1>プロフィール登録</h1>
+<form id="profileForm">
+<div class="form-group">
+<label for="full_name">名前（フルネーム）</label>
+<input type="text" id="full_name" name="full_name" required>
+</div>
+<div class="form-group">
+<label for="gender">性別</label>
+<select id="gender" name="gender" required>
+<option value="">選択してください</option>
+<option value="男性">男性</option> <option value="女性">女性</option> <option value="その他">その他</option>
+</select>
+</div>
+<div class="form-group">
+<label>生年月日</label>
+<div class="birthdate-selects">
+<select id="birth_year" name="birth_year" required></select>
+<select id="birth_month" name="birth_month" required></select>
+<select id="birth_day" name="birth_day" required></select>
+</div>
+</div>
+<div class="form-group">
+<label for="phone_number">電話番号</label>
+<input type="tel" id="phone_number" name="phone_number" required>
+</div>
+<div class="form-group">
+<label for="license">美容師免許</label>
+<select id="license" name="license" required>
+<option value="">選択してください</option>
+<option value="取得済み">取得済み</option>
+<option value="未取得（学生・通信含む）">未取得（学生・通信含む）</option>
+</select>
+</div>
+<div class="form-group">
+<label for="mbti">MBTI</label>
+<select id="mbti" name="mbti" required>
+<option value="">選択してください</option>
+<option value="ISTJ">ISTJ</option> <option value="ISFJ">ISFJ</option> <option value="INFJ">INFJ</option> <option value="INTJ">INTJ</option>
+<option value="ISTP">ISTP</option> <option value="ISFP">ISFP</option> <option value="INFP">INFP</option> <option value="INTP">INTP</option>
+<option value="ESTP">ESTP</option> <option value="ESFP">ESFP</option> <option value="ENFP">ENFP</option> <option value="ENTP">ENTP</option>
+<option value="ESTJ">ESTJ</option> <option value="ESFJ">ESFJ</option> <option value="ENFJ">ENFJ</option> <option value="ENTJ">ENTJ</option>
+</select>
+</div>
+<div class="form-group">
+<label for="role">役職</label>
+<select id="role" name="role" required>
+<option value="">選択してください</option>
+<option value="アシスタント">アシスタント</option>
+<option value="ジュニアスタイリスト">ジュニアスタイリスト</option>
+<option value="スタイリスト">スタイリスト</option>
+<option value="店長/副店長">店長/副店長</option>
+<option value="マネージャー以上">マネージャー以上</option>
+</select>
+</div>
+<div class="form-group">
+<label for="area_prefecture">希望エリア（都道府県）</label>
+<select id="area_prefecture" name="area_prefecture" required>
+<option value="">選択してください</option>
+<option value="北海道">北海道</option><option value="青森県">青森県</option><option value="岩手県">岩手県</option><option value="宮城県">宮城県</option><option value="秋田県">秋田県</option><option value="山形県">山形県</option><option value="福島県">福島県</option>
+<option value="茨城県">茨城県</option><option value="栃木県">栃木県</option><option value="群馬県">群馬県</option><option value="埼玉県">埼玉県</option><option value="千葉県">千葉県</option><option value="東京都">東京都</option><option value="神奈川県">神奈川県</option>
+<option value="新潟県">新潟県</option><option value="富山県">富山県</option><option value="石川県">石川県</option><option value="福井県">福井県</option><option value="山梨県">山梨県</option><option value="長野県">長野県</option><option value="岐阜県">岐阜県</option><option value="静岡県">静岡県</option><option value="愛知県">愛知県</option>
+<option value="三重県">三重県</option><option value="滋賀県">滋賀県</option><option value="京都府">京都府</option><option value="大阪府">大阪府</option><option value="兵庫県">兵庫県</option><option value="奈良県">奈良県</option><option value="和歌山県">和歌山県</option>
+<option value="鳥取県">鳥取県</option><option value="島根県">島根県</option><option value="岡山県">岡山県</option><option value="広島県">広島県</option><option value="山口県">山口県</option>
+<option value="徳島県">徳島県</option><option value="香川県">香川県</option><option value="愛媛県">愛媛県</option><option value="高知県">高知県</option>
+<option value="福岡県">福岡県</option><option value="佐賀県">佐賀県</option><option value="長崎県">長崎県</option><option value="熊本県">熊本県</option><option value="大分県">大分県</option><option value="宮崎県">宮崎県</option><option value="鹿児島県">鹿児島県</option><option value="沖縄県">沖縄県</option>
+</select>
+</div>
+<div class="form-group">
+<label for="area_detail">希望勤務地（駅名、市区町村など）</label>
+<input type="text" id="area_detail" name="area_detail" placeholder="例：渋谷駅、新宿区、横浜市" required>
+</div>
+<div class="form-group">
+<label for="satisfaction">現在の職場満足度</label>
+<select id="satisfaction" name="satisfaction" required>
+<option value="">選択してください</option>
+<option value="とても満足している">とても満足している</option>
+<option value="まあまあ満足している">まあまあ満足している</option>
+<option value="どちらでもない">どちらでもない</option>
+<option value="あまり満足していない">あまり満足していない</option>
+<option value="全く満足していない">全く満足していない</option>
+</select>
+</div>
+<div class="form-group">
+<label for="perk">最も興味のある待遇</label>
+<select id="perk" name="perk" required>
+<option value="">選択してください</option>
+<option value="高収入">高収入</option>
+<option value="社会保険完備">社会保険完備</option>
+<option value="完全週休2日制">完全週休2日制</option>
+<option value="土日休み可能">土日休み可能</option>
+<option value="シフト/休みが自由">シフト/休みが自由</option>
+<option value="教育体制充実">教育体制充実</option>
+<option value="新規客が多い">新規客が多い</option>
+<option value="大手サロン">大手サロン</option>
+</select>
+</div>
+<div class="form-group">
+<label for="current_status">今の状況</label>
+<select id="current_status" name="current_status" required>
+<option value="">選択してください</option>
+<option value="転職活動中">転職活動中</option>
+<option value="時間がなくて動けていない">時間がなくて動けていない</option>
+<option value="何から始めたらいいか分からない">何から始めたらいいか分からない</option>
+<option value="求人を見ているが行動できていない">求人を見ているが行動できていない</option>
+<option value="興味はあるが本気ではない">興味はあるが本気ではない</option>
+<option value="特に困っていない">特に困っていない</option>
+</select>
+</div>
+<div class="form-group">
+<label for="timing">転職希望時期</label>
+<select id="timing" name="timing" required>
+<option value="">選択してください</option>
+<option value="すぐにでも">すぐにでも</option>
+<option value="1ヶ月以内">1ヶ月以内</option>
+<option value="3ヶ月以内">3ヶ月以内</option>
+<option value="半年以内">半年以内</option>
+<option value="良いサロンがあれば検討したい">良いサロンがあれば検討したい</option>
+<option value="まだ考え中">まだ考え中</option>
+</select>
+</div>
+<button type="submit">登録する</button>
+</form>
+<div id="loading">送信中...</div>
+<div id="error"></div>
+</div>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+function setupBirthdateSelectors() {
+const yearSelect = document.getElementById('birth_year');
+const monthSelect = document.getElementById('birth_month');
+const daySelect = document.getElementById('birth_day');
+// 日の選択肢を更新する関数
+function updateDays() {
+const year = parseInt(yearSelect.value);
+const month = parseInt(monthSelect.value);
+const currentDay = daySelect.value;
+daySelect.innerHTML = '<option value="">日</option>'; // いったんリセット
+if (year && month) {
+// 月の最終日を取得 (翌月の0日目を指定すると最終日になる)
+const daysInMonth = new Date(year, month, 0).getDate();
+for (let i = 1; i <= daysInMonth; i++) {
+daySelect.innerHTML += `<option value="${i}">${i}</option>`;
+}
+// 以前選択していた日を復元
+if (currentDay <= daysInMonth) {
+daySelect.value = currentDay;
+}
+}
+}
+// 年の選択肢 (美容師を想定し18歳〜60歳前に設定)
+const currentYear = new Date().getFullYear();
+yearSelect.innerHTML = '<option value="">年</option>';
+for (let i = currentYear - 18; i >= currentYear - 60; i--) {
+yearSelect.innerHTML += `<option value="${i}">${i}</option>`;
+}
+// 月の選択肢
+monthSelect.innerHTML = '<option value="">月</option>';
+for (let i = 1; i <= 12; i++) {
+monthSelect.innerHTML += `<option value="${i}">${i}</option>`;
+}
+// 初期の日付は空にしておく
+daySelect.innerHTML = '<option value="">日</option>';
+// 年または月が変更されたら、日の選択肢を更新する
+yearSelect.addEventListener('change', updateDays);
+monthSelect.addEventListener('change', updateDays);
+}
+async function main() {
+setupBirthdateSelectors(); // プルダウンを初期化
+const liffId = "2008066763-ZJ72p7OJ";
+const endpointUrl = "https://lumina-offer-bot.onrender.com/trigger-offer";
+try {
+await liff.init({ liffId: liffId });
+if (!liff.isLoggedIn()) { liff.login(); return; }
+// ▼▼▼ 変更点：フォームを開いたときに「初回登録」と送信する機能を追加 ▼▼▼
+if (liff.isInClient()) {
+try {
+// メッセージを送信
+await liff.sendMessages([{
+type: 'text',
+text: '初回登録'
+}]);
+console.log('初回登録メッセージを送信しました');
+} catch (err) {
+console.error('メッセージ送信エラー:', err);
+// エラーが出てもフォーム入力は妨げないようにここではアラートなどを出さない
+}
+}
+// ▲▲▲ 変更点ここまで ▲▲▲
+const profile = await liff.getProfile();
+const userId = profile.userId;
+const form = document.getElementById('profileForm');
+form.addEventListener('submit', async (e) => {
+e.preventDefault();
+document.getElementById('loading').style.display = 'block';
+document.getElementById('error').style.display = 'none';
+const formData = new FormData(form);
+const wishes = {};
+for (const [key, value] of formData.entries()) {
+wishes[key] = value;
+}
+// 年月日から YYYY-MM-DD 形式の文字列を生成
+const year = wishes.birth_year;
+const month = String(wishes.birth_month).padStart(2, '0');
+const day = String(wishes.birth_day).padStart(2, '0');
+wishes.birthdate = `${year}-${month}-${day}`;
+// 分割されたデータは不要なので削除
+delete wishes.birth_year;
+delete wishes.birth_month;
+delete wishes.birth_day;
+const payload = { userId: userId, wishes: wishes };
+try {
+const response = await fetch(endpointUrl, {
+method: 'POST', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify(payload),
+});
+if (response.ok) { liff.closeWindow(); }
+else { throw new Error('サーバーエラー'); }
+} catch (error) {
+document.getElementById('error').textContent = `送信に失敗しました。`;
+document.getElementById('error').style.display = 'block';
+} finally {
+document.getElementById('loading').style.display = 'none';
+}
+});
+} catch (error) {
+document.getElementById('error').textContent = `初期化に失敗しました。`;
+document.getElementById('error').style.display = 'block';
+}
+}
+main();
+</script>
 </body>
 </html>
