@@ -60,7 +60,6 @@ def send_notification_email(subject, body):
         print(f"メール送信エラー: {e}")
 
 def generate_single_offer_message(user_wishes, salon_info):
-    # ▼▼▼ 変更点③: サロン名を入れないように指示を追加 ▼▼▼
     prompt_text = f"""
     あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
     # 候補者プロフィール:
@@ -236,22 +235,19 @@ def create_salon_flex_message(salon, offer_text):
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
     call_request_liff_url = f"https://liff.line.me/{CALL_REQUEST_LIFF_ID}?salonId={salon_id}"
 
-    # ▼▼▼ 変更点①: サロン画像のURLを使用し、外部サービスでぼかし処理をかける ▼▼▼
     original_image_url = salon.get("画像URL", "")
     if original_image_url:
-        # wsrv.nl を使用して画像をぼかす (blur=10程度)
         blurred_image_url = f"https://wsrv.nl/?url={original_image_url}&blur=10&output=jpg"
     else:
         blurred_image_url = "https://placehold.co/600x400/333333/FFFFFF/png?text=No+Image"
 
-    # ▼▼▼ 変更点②: 「公開用店名」を表示する（なければ非公開サロン） ▼▼▼
     display_salon_name = salon.get("公開用店名", "非公開サロン")
 
     return {
         "type": "bubble",
         "hero": {
             "type": "image",
-            "url": blurred_image_url, # ぼかした画像URLを使用
+            "url": blurred_image_url,
             "size": "full",
             "aspectRatio": "20:13",
             "aspectMode": "cover"
@@ -262,7 +258,7 @@ def create_salon_flex_message(salon, offer_text):
             "contents": [
                 {
                     "type": "text",
-                    "text": display_salon_name, # 公開用店名を使用
+                    "text": display_salon_name,
                     "weight": "bold",
                     "size": "xl"
                 },
@@ -319,14 +315,14 @@ def create_salon_flex_message(salon, offer_text):
             "contents": [
                 {
                     "type": "button",
-                    "style": "primary", # 変更点⑤: 水色にするためprimaryにしてcolor指定
+                    "style": "primary",
                     "height": "sm",
                     "action": {
                         "type": "uri",
                         "label": "待遇を見る",
                         "uri": detail_liff_url
                     },
-                    "color": "#33C5F3" # 水色
+                    "color": "#59A5D8" # ▼ 変更: 落ち着いた水色
                 },
                 {
                     "type": "button",
@@ -337,7 +333,7 @@ def create_salon_flex_message(salon, offer_text):
                         "label": "サロン名を確認する",
                         "uri": call_request_liff_url
                     },
-                    "color": "#F37335" # 変更点④: グラデーション不可のため濃いオレンジを指定
+                    "color": "#F37335"
                 }
             ],
             "flex": 0
@@ -596,7 +592,6 @@ def trigger_offer():
         user_wishes['userId'] = user_id
         top_salons, reason = find_and_select_top_salons(user_wishes)
         
-        # マッチするサロンがなくても成功ステータスを返す
         if not top_salons:
             print(f"ユーザーID {user_id} にマッチするサロンがありませんでした。理由: {reason}")
         else:

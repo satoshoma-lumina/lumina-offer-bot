@@ -106,7 +106,7 @@
             
             if (!liff.isLoggedIn()) { liff.login(); return; }
 
-            // ▼▼▼ 修正: 自動メッセージ送信機能を追加 ▼▼▼
+            // ▼▼▼ 修正: 自動メッセージ送信機能 ▼▼▼
             if (liff.isInClient()) {
                 try {
                     await liff.sendMessages([{
