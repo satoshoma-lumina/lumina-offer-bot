@@ -15,19 +15,19 @@
         .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding-bottom: 100px; }
         .gallery { width: 100%; overflow: hidden; background: #000; position: relative; }
         
-        /* ▼▼▼ 修正: ぼかしと拡大で謎の線を消す ▼▼▼ */
+        /* ▼▼▼ 修正: ぼかしを弱くしました (4px) ▼▼▼ */
         .blur-effect {
-            filter: blur(8px); /* ぼかし量 */
-            -webkit-filter: blur(8px);
-            transform: scale(1.1); /* 拡大して端を隠す */
+            filter: blur(4px);
+            -webkit-filter: blur(4px);
+            transform: scale(1.05); /* 線が出ないよう少しだけ拡大 */
             display: block;
         }
         
         .main-image { overflow: hidden; height: 250px; position: relative; }
         .main-image img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
         
-        .thumbnails { display: flex; gap: 5px; padding: 10px; }
-        .thumbnails img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+        /* サムネイルのスタイルは削除しました */
+        
         .content { padding: 10px 20px; }
         h1 { font-size: 24px; margin-top: 0; }
         .catchphrase { font-size: 16px; font-weight: bold; color: #F37335; margin-bottom: 20px; }
@@ -50,8 +50,7 @@
                 <div class="main-image">
                     <img id="main-photo" class="blur-effect" src="" alt="メイン写真">
                 </div>
-                <div class="thumbnails" id="thumbnails-container"></div>
-            </div>
+                </div>
             <div class="content">
                 <h1 id="salon-name"></h1>
                 <p class="catchphrase" id="salon-catchphrase"></p>
@@ -83,33 +82,17 @@
                 if (!response.ok) throw new Error("サロン情報の取得に失敗しました。");
                 const salon = await response.json();
 
-                // ▼▼▼ 修正: 「公開用店名」を使用。無ければ「非公開サロン」 ▼▼▼
                 document.getElementById('salon-name').textContent = salon['公開用店名'] || '非公開サロン';
-                
                 document.getElementById('salon-catchphrase').textContent = salon['サロンの魅力キャッチコピー'] || '';
                 document.getElementById('salon-description').textContent = salon['サロン紹介文'] || '詳細情報はありません。';
                 document.getElementById('salon-salary').textContent = salon['給与詳細'] || '詳細情報はありません。';
                 document.getElementById('salon-holiday').textContent = salon['休日詳細'] || '詳細情報はありません。';
                 document.getElementById('salon-welfare').textContent = salon['福利厚生詳細'] || '詳細情報はありません。';
                 
+                // ▼▼▼ 修正: 画像を1枚のみ表示に変更 ▼▼▼
                 const mainPhoto = document.getElementById('main-photo');
                 mainPhoto.src = salon['画像URL'] || 'https://placehold.co/600x400/EEE/31343C?text=No+Image';
-
-                const photoUrls = [salon['画像URL'], salon['写真URL_2'], salon['写真URL_3']].filter(url => url);
-                const thumbnailsContainer = document.getElementById('thumbnails-container');
-                thumbnailsContainer.innerHTML = '';
-                photoUrls.forEach((url, index) => {
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.classList.add('blur-effect'); 
-                    if (index === 0) img.classList.add('active');
-                    img.addEventListener('click', () => {
-                        mainPhoto.src = url;
-                        thumbnailsContainer.querySelectorAll('img').forEach(i => i.classList.remove('active'));
-                        img.classList.add('active');
-                    });
-                    thumbnailsContainer.appendChild(img);
-                });
+                // ▲▲▲ 修正ここまで ▲▲▲
 
                 document.getElementById('schedule-button').href = `https://liff.line.me/${CALL_REQUEST_LIFF_ID}?salonId=${salonId}`;
                 loadingDiv.style.display = 'none';

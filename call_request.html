@@ -11,22 +11,16 @@
         .description { font-size: 14px; margin-bottom: 25px; line-height: 1.6; color: #555; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 15px; }
-        
-        /* ラジオボタンのスタイル */
         .radio-group { display: flex; flex-direction: column; gap: 12px; }
         .radio-option { display: flex; align-items: center; padding: 12px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
         .radio-option:hover { background-color: #f9f9f9; }
         .radio-option input[type="radio"] { margin-right: 12px; transform: scale(1.2); }
         .radio-option span { font-size: 15px; }
-
-        /* その他入力欄 */
         #other_input_container { display: none; margin-top: 10px; margin-left: 30px; }
         input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
-
         button { width: 100%; padding: 16px; background-color: #F37335; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: opacity 0.3s; }
         button:hover { opacity: 0.9; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-
         #loading { display: none; text-align: center; margin-top: 15px; font-size: 14px; color: #666; }
         #success-message { display: none; text-align: center; padding: 40px 20px; }
         #success-message h2 { color: #F37335; margin-bottom: 15px; }
@@ -90,7 +84,6 @@
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        // その他が選択されたときに入力欄を表示
         const radioOther = document.getElementById('radio-other');
         const otherInputContainer = document.getElementById('other_input_container');
         const radioOptions = document.querySelectorAll('input[name="timeSlot"]');
@@ -108,19 +101,26 @@
         });
 
         async function main() {
-            // ★★★ 3. 先ほど発行した新しいLIFF IDを入れてください ★★★
             const LIFF_ID = "2008066763-d13XV3gO"; 
-            
             await liff.init({ liffId: LIFF_ID });
             
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
+            if (!liff.isLoggedIn()) { liff.login(); return; }
+
+            // ▼▼▼ 修正: 自動メッセージ送信機能を追加 ▼▼▼
+            if (liff.isInClient()) {
+                try {
+                    await liff.sendMessages([{
+                        type: 'text',
+                        text: 'サロン名を確認する'
+                    }]);
+                } catch (err) {
+                    console.error('メッセージ送信エラー', err);
+                }
             }
+            // ▲▲▲ 修正ここまで ▲▲▲
 
             const params = new URLSearchParams(window.location.search);
             const salonId = params.get('salonId');
-
             const form = document.getElementById('callRequestForm');
             const submitBtn = document.getElementById('submit-btn');
             const loading = document.getElementById('loading');
@@ -133,8 +133,6 @@
                 try {
                     const profile = await liff.getProfile();
                     const userId = profile.userId;
-
-                    // 選択された値を取得
                     let selectedValue = document.querySelector('input[name="timeSlot"]:checked').value;
                     if (selectedValue === 'その他') {
                         const otherText = document.getElementById('other_text').value;
