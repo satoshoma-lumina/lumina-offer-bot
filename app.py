@@ -247,14 +247,6 @@ def callback():
         abort(400)
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessageContent)
-def handle_message(event):
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info( ReplyMessageRequest(reply_token=event.reply_token, messages=[TextMessage(text="ご登録ありがとうございます。リッチメニューからプロフィールをご入力ください。")]) )
-
-
-# ★★★ ここからが修正箇所です ★★★
 @handler.add(FollowEvent)
 def handle_follow(event):
     """
@@ -282,12 +274,9 @@ def handle_follow(event):
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             
-            # (ユーザー名 f"{display_name}さん" を削除したため、APIコールも削除)
-
             # 登録フォームのLIFF URL
             PROFILE_LIFF_URL = "https://liff.line.me/2008066763-ZJ72p7OJ" 
             
-            # ★★★ (変更点 ④) ご指定のGitHub URLをRaw URLに変換しました ★★★
             YOUR_NEW_IMAGE_URL = "https://raw.githubusercontent.com/satoshoma-lumina/lumina-offer-bot/4c57f959238f64d2254550c2347db1d9a625a435/%E3%82%B9%E3%82%AD%E3%83%9E%C3%97MBTI%E8%A8%B4%E6%B1%82_%E6%95%B0%E5%AD%97%E5%A4%89%E6%9B%B4Vr.png"
 
             # 送信するFlexMessageの定義
@@ -295,10 +284,10 @@ def handle_follow(event):
                 "type": "bubble",
                 "hero": {
                     "type": "image",
-                    "url": YOUR_NEW_IMAGE_URL, # ★ 変更点 ④
+                    "url": YOUR_NEW_IMAGE_URL,
                     "size": "full",
-                    "aspectRatio": "1024:678", # ★★★ ご指定のサイズ 1024x678px に合わせました ★★★
-                    "aspectMode": "fit" # ★ "fit" のまま（画像全体を表示）
+                    "aspectRatio": "1024:678",
+                    "aspectMode": "fit"
                 },
                 "body": {
                     "type": "box",
@@ -306,14 +295,14 @@ def handle_follow(event):
                     "contents": [
                         {
                             "type": "text",
-                            "text": "”3分”でオファーが届く！", # ★ 変更点 ①
+                            "text": "”3分”でオファーが届く！",
                             "weight": "bold",
                             "size": "xl",
                             "align": "center"
                         },
                         {
                             "type": "text",
-                            "text": "業界初！MBTIで相性マッチ", # ★ 変更点 ②
+                            "text": "業界初！MBTIで相性マッチ",
                             "wrap": True,
                             "margin": "lg",
                             "size": "md",
@@ -321,8 +310,8 @@ def handle_follow(event):
                             "align": "center"
                         }
                     ],
-                    "paddingTop": "xl", # テキストが見やすいよう調整
-                    "paddingBottom": "lg" # テキストが見やすいよう調整
+                    "paddingTop": "xl",
+                    "paddingBottom": "lg"
                 },
                 "footer": {
                     "type": "box",
@@ -332,7 +321,7 @@ def handle_follow(event):
                             "type": "button",
                             "action": {
                                 "type": "uri",
-                                "label": "今すぐMBTI入力▶▶", # ★ 変更点 ③
+                                "label": "今すぐMBTI入力▶▶",
                                 "uri": PROFILE_LIFF_URL
                             },
                             "style": "primary",
@@ -343,7 +332,7 @@ def handle_follow(event):
                     ],
                     "spacing": "sm",
                     "flex": 0,
-                    "paddingAll": "md" # ボタン周りの余白を調整
+                    "paddingAll": "md"
                 }
             }
 
@@ -363,8 +352,6 @@ def handle_follow(event):
     except Exception as e:
         print(f"Followイベントへの返信メッセージ送信エラー: {e}")
         traceback.print_exc()
-
-# ★★★ 修正箇所はここまでです ★★★
 
 
 @app.route("/api/salon-detail/<int:salon_id>", methods=['GET'])
