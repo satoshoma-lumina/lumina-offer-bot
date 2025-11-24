@@ -26,10 +26,8 @@ app = Flask(__name__)
 CORS(app)
 
 # --- 定数定義 ---
-# 電話確認用LIFF
 CALL_REQUEST_LIFF_ID = "2008066763-d13XV3gO"
 
-# 既存のLIFF ID
 SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
@@ -62,6 +60,7 @@ def send_notification_email(subject, body):
         print(f"メール送信エラー: {e}")
 
 def generate_single_offer_message(user_wishes, salon_info):
+    # ▼▼▼ 変更点③: サロン名を入れないように指示を追加 ▼▼▼
     prompt_text = f"""
     あなたは、美容師向けのスカウトサービス「LUMINA Offer」の優秀なAIアシスタントです。
     # 候補者プロフィール:
@@ -74,7 +73,8 @@ def generate_single_offer_message(user_wishes, salon_info):
     - 候補者が「最も興味のある待遇」が、なぜそのサロンで満たされるのかを説明すること。
     - 候補者のMBTIの性格特性が、どのようにそのサロンの文化や特徴と合致するのかを説明すること。
     - 最後は必ず「まずは、サロンから話を聞いてみませんか？」という一文で締めること。
-    - 禁止事項: サロンが直接オファーを送っているかのような表現は避けること。
+    - 禁止事項1: サロンが直接オファーを送っているかのような表現は避けること。
+    - 禁止事項2: 文章内に具体的な「サロン名（店舗名）」は絶対に含まないこと。「当サロン」「こちらのサロン」などの表現を使用すること。
     # 回答フォーマット:
     オファー文章のテキストのみを回答してください。JSON形式は不要です。
     """
@@ -224,28 +224,34 @@ def find_and_select_top_salons(user_wishes):
 
     return top_salons, "サロン選出完了"
 
-# ▼▼▼ 変更点：ボタン文言を「サロン名を確認する」に統一 ▼▼▼
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
     display_role = "アシスタント" if "アシスタント" in db_role else "スタイリスト"
     recruitment_type = salon.get("募集", "")
     salon_id = salon.get('店舗ID')
     
-    # マスキング処理
     address_full = salon.get("住所", "")
     masked_address = "エリア: " + address_full.split(" ")[0] if address_full else "エリア: 非公開"
 
-    # ボタンのリンク先
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
     call_request_liff_url = f"https://liff.line.me/{CALL_REQUEST_LIFF_ID}?salonId={salon_id}"
 
-    secret_image_url = "https://placehold.co/600x400/333333/FFFFFF/png?text=Secret+Salon"
+    # ▼▼▼ 変更点①: サロン画像のURLを使用し、外部サービスでぼかし処理をかける ▼▼▼
+    original_image_url = salon.get("画像URL", "")
+    if original_image_url:
+        # wsrv.nl を使用して画像をぼかす (blur=10程度)
+        blurred_image_url = f"https://wsrv.nl/?url={original_image_url}&blur=10&output=jpg"
+    else:
+        blurred_image_url = "https://placehold.co/600x400/333333/FFFFFF/png?text=No+Image"
+
+    # ▼▼▼ 変更点②: 「公開用店名」を表示する（なければ非公開サロン） ▼▼▼
+    display_salon_name = salon.get("公開用店名", "非公開サロン")
 
     return {
         "type": "bubble",
         "hero": {
             "type": "image",
-            "url": secret_image_url,
+            "url": blurred_image_url, # ぼかした画像URLを使用
             "size": "full",
             "aspectRatio": "20:13",
             "aspectMode": "cover"
@@ -256,7 +262,7 @@ def create_salon_flex_message(salon, offer_text):
             "contents": [
                 {
                     "type": "text",
-                    "text": "非公開サロン",
+                    "text": display_salon_name, # 公開用店名を使用
                     "weight": "bold",
                     "size": "xl"
                 },
@@ -313,13 +319,14 @@ def create_salon_flex_message(salon, offer_text):
             "contents": [
                 {
                     "type": "button",
-                    "style": "secondary",
+                    "style": "primary", # 変更点⑤: 水色にするためprimaryにしてcolor指定
                     "height": "sm",
                     "action": {
                         "type": "uri",
                         "label": "待遇を見る",
                         "uri": detail_liff_url
-                    }
+                    },
+                    "color": "#33C5F3" # 水色
                 },
                 {
                     "type": "button",
@@ -327,10 +334,10 @@ def create_salon_flex_message(salon, offer_text):
                     "height": "sm",
                     "action": {
                         "type": "uri",
-                        "label": "サロン名を確認する", # 文言を統一
+                        "label": "サロン名を確認する",
                         "uri": call_request_liff_url
                     },
-                    "color": "#F37335"
+                    "color": "#F37335" # 変更点④: グラデーション不可のため濃いオレンジを指定
                 }
             ],
             "flex": 0
@@ -354,7 +361,6 @@ def callback():
 
 @handler.add(FollowEvent)
 def handle_follow(event):
-    # 1. GASに通知
     if GAS_WEBHOOK_URL:
         try:
             params_to_gas = {
@@ -368,7 +374,6 @@ def handle_follow(event):
     else:
         print("GAS_WEBHOOK_URLが設定されていません。")
 
-    # 2. ユーザーに登録を促すメッセージ
     try:
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
@@ -453,7 +458,7 @@ def submit_questionnaire():
             user_management_sheet.update(f'Q{row_to_update}:X{row_to_update}', [update_values])
             user_name = user_management_sheet.cell(row_to_update, 4).value
             subject = f"【LUMINAオファー】{user_name}様からアンケート回答がありました"
-            body = f"{user_name}様（ユーザーID: {user_id}）からアンケート回答がありました。\n..." 
+            body = f"{user_name}様（ユーザーID: {user_id}）からアンケート回答がありました。\n..."
             send_notification_email(subject, body)
             return jsonify({"status": "success", "message": "Questionnaire submitted successfully"})
         else:
@@ -485,7 +490,6 @@ def submit_line_contact():
         print(f"LINE連絡先更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update LINE contact"}), 500
 
-# ▼▼▼ 新規追加：電話連絡希望フォームの受付処理 ▼▼▼
 @app.route("/submit-call-request", methods=['POST'])
 def submit_call_request():
     data = request.get_json()
@@ -498,8 +502,6 @@ def submit_call_request():
     
     try:
         gc = gspread.service_account(filename=creds_path)
-        
-        # 1. ユーザー管理シートから電話番号と名前を取得
         user_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
         user_cell = user_sheet.find(user_id, in_column=1)
         user_phone = "不明"
@@ -508,19 +510,16 @@ def submit_call_request():
             user_name = user_sheet.cell(user_cell.row, 4).value
             user_phone = user_sheet.cell(user_cell.row, 7).value
         
-        # 2. サロン情報を取得
         salon_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
         all_salons = salon_sheet.get_all_records()
         salon_info = next((s for s in all_salons if str(s['店舗ID']) == str(salon_id)), None)
         salon_name = salon_info['店舗名'] if salon_info else "サロンID: " + str(salon_id)
 
-        # 3. オファー管理シートに記録
         offer_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
         today_str = datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')
         new_row = [user_id, salon_id, today_str, "電話希望: " + time_slot]
         offer_sheet.append_row(new_row, value_input_option='USER_ENTERED')
         
-        # 4. 管理者へメール通知
         priority_marker = "【至急】" if "今すぐ" in time_slot else ""
         subject = f"{priority_marker}【LUMINA】サロン名確認・電話依頼（{user_name}様）"
         body = f"""
@@ -597,35 +596,36 @@ def trigger_offer():
         user_wishes['userId'] = user_id
         top_salons, reason = find_and_select_top_salons(user_wishes)
         
+        # マッチするサロンがなくても成功ステータスを返す
         if not top_salons:
-            return jsonify({"status": "error", "message": "No salons found"}), 404
+            print(f"ユーザーID {user_id} にマッチするサロンがありませんでした。理由: {reason}")
+        else:
+            now_jst = datetime.now(JST)
+            cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
+            first_send_date = now_jst.date() + timedelta(days=1) if now_jst >= cutoff_time else now_jst.date()
+            
+            schedule = [
+                (first_send_date, "21:30"),
+                (first_send_date + timedelta(days=1), "12:30"),
+                (first_send_date + timedelta(days=1), "20:00"),
+                (first_send_date + timedelta(days=3), "12:30"),
+                (first_send_date + timedelta(days=4), "21:30")
+            ]
+            
+            rows_to_append = []
+            for i, salon in enumerate(top_salons):
+                if i < len(schedule):
+                    send_date, send_time_str = schedule[i]
+                    send_time_obj = datetime.strptime(send_time_str, "%H:%M").time()
+                    send_at_datetime = datetime.combine(send_date, send_time_obj, tzinfo=JST)
+                    send_at_iso = send_at_datetime.isoformat()
+                    new_row = [user_id, salon['店舗ID'], send_at_iso, 'pending']
+                    rows_to_append.append(new_row)
 
-        now_jst = datetime.now(JST)
-        cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
-        first_send_date = now_jst.date() + timedelta(days=1) if now_jst >= cutoff_time else now_jst.date()
-        
-        schedule = [
-            (first_send_date, "21:30"),
-            (first_send_date + timedelta(days=1), "12:30"),
-            (first_send_date + timedelta(days=1), "20:00"),
-            (first_send_date + timedelta(days=3), "12:30"),
-            (first_send_date + timedelta(days=4), "21:30")
-        ]
-        
-        rows_to_append = []
-        for i, salon in enumerate(top_salons):
-            if i < len(schedule):
-                send_date, send_time_str = schedule[i]
-                send_time_obj = datetime.strptime(send_time_str, "%H:%M").time()
-                send_at_datetime = datetime.combine(send_date, send_time_obj, tzinfo=JST)
-                send_at_iso = send_at_datetime.isoformat()
-                new_row = [user_id, salon['店舗ID'], send_at_iso, 'pending']
-                rows_to_append.append(new_row)
-
-        if rows_to_append:
-            gc = gspread.service_account(filename=creds_path)
-            queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
-            queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
+            if rows_to_append:
+                gc = gspread.service_account(filename=creds_path)
+                queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
+                queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
 
     except Exception as e:
         print(f"オファー予約エラー: {e}"); traceback.print_exc()
@@ -670,9 +670,16 @@ def process_offer_queue():
                     
                     try:
                         today_str = datetime.now(JST).strftime('%Y/%m/%d')
-                        new_offer_row = [ user_id, salon_info.get('店舗ID'), today_str, "送信済み" ] + [''] * 11 
+                        new_offer_row = [
+                            user_id,
+                            salon_info.get('店舗ID'),
+                            today_str,
+                            "送信済み"
+                        ] + [''] * 11 
                         offer_management_sheet.append_row(new_offer_row, value_input_option='USER_ENTERED')
-                    except Exception as e: print(f"オファー記録エラー: {e}")
+                    except Exception as e:
+                        print(f"オファー管理シートへの書き込み中にエラー: {e}")
+
                     queue_sheet.update_cell(row_num, 4, 'sent')
                 else:
                     queue_sheet.update_cell(row_num, 4, 'error')
