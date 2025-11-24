@@ -5,281 +5,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>サロン名を確認する</title>
     <style>
-        /* ベーススタイル */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #333; -webkit-tap-highlight-color: transparent; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 25px 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; color: #333; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 30px 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         
-        /* ヘッダー周り */
-        h1 { text-align: center; font-size: 18px; margin-top: 0; margin-bottom: 15px; color: #333; font-weight: bold; }
-        .description { font-size: 13px; margin-bottom: 25px; line-height: 1.6; color: #666; background: #f9f9f9; padding: 12px; border-radius: 8px; border-left: 4px solid #F37335; }
+        h1 { text-align: center; font-size: 18px; margin-top: 0; margin-bottom: 20px; color: #333; font-weight: bold; }
         
-        /* ショートカットエリア */
-        .shortcut-section { margin-bottom: 25px; }
-        .section-label { font-size: 14px; font-weight: bold; margin-bottom: 10px; display: block; color: #444; }
-        .shortcut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .shortcut-btn {
-            background: #fff; border: 1px solid #F37335; color: #F37335;
-            padding: 12px 5px; border-radius: 8px; font-size: 13px; font-weight: bold;
+        .description { font-size: 14px; text-align: center; margin-bottom: 30px; line-height: 1.6; color: #666; }
+        .highlight { color: #F37335; font-weight: bold; }
+
+        /* セクション見出し */
+        .section-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #444; display: flex; align-items: center; }
+        .section-title::before { content: ''; display: inline-block; width: 4px; height: 16px; background: #F37335; margin-right: 8px; border-radius: 2px; }
+
+        /* グリッドレイアウト */
+        .btn-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 25px; } /* 曜日用：4列 */
+        .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px; } /* 時間用：2列 */
+        
+        /* 選択ボタンのデザイン */
+        .select-btn {
+            position: relative;
+            background: #fff; border: 1px solid #ddd; color: #555;
+            padding: 12px 2px; border-radius: 10px; font-size: 13px; font-weight: 500;
             cursor: pointer; text-align: center; transition: all 0.2s;
-        }
-        .shortcut-btn:active { transform: scale(0.98); background: #fff5f0; }
-        .shortcut-btn.active { background: #F37335; color: white; }
-
-        /* 「いつでも可」用の特別なスタイル */
-        .anytime-wrapper { margin-bottom: 20px; }
-        .anytime-label {
             display: flex; align-items: center; justify-content: center;
-            background: #eefcfd; border: 2px solid #33C5F3; color: #008db3;
-            padding: 15px; border-radius: 10px; font-weight: bold; font-size: 16px;
-            cursor: pointer; transition: all 0.2s;
+            min-height: 44px;
         }
-        .anytime-label.checked { background: #33C5F3; color: white; }
-        .anytime-label input { display: none; }
-        .anytime-icon { margin-right: 8px; font-size: 18px; }
-
-        /* 詳細選択アコーディオン */
-        .schedule-section { border-top: 1px solid #eee; padding-top: 20px; }
-        .accordion-item { border-bottom: 1px solid #f0f0f0; }
-        .accordion-header {
-            padding: 15px 5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;
-        }
-        .accordion-header span.day-label { font-weight: bold; }
-        .accordion-header span.status { font-size: 12px; color: #F37335; background: #fff5f0; padding: 2px 8px; border-radius: 10px; display: none; }
-        .accordion-header span.status.show { display: inline-block; }
-        .accordion-icon { color: #ccc; transition: transform 0.3s; }
-        .accordion-item.active .accordion-icon { transform: rotate(180deg); }
+        .select-btn input { display: none; }
         
-        .time-grid {
-            display: none; padding: 10px 5px 20px; gap: 8px; 
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        /* 選択状態 */
+        .select-btn:has(input:checked) {
+            background: #fff5f0; border-color: #F37335; color: #F37335; font-weight: bold;
+            box-shadow: 0 2px 8px rgba(243, 115, 53, 0.15);
         }
-        .accordion-item.active .time-grid { display: grid; }
+        .select-btn:active { transform: scale(0.96); }
 
-        /* 時間チップボタン */
-        .time-chip { position: relative; }
-        .time-chip input { display: none; }
-        .time-chip span {
-            display: block; text-align: center; padding: 10px 5px; 
-            background: #f4f4f4; color: #555; border-radius: 25px; 
-            font-size: 12px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
-        }
-        .time-chip input:checked + span {
-            background: #F37335; color: white; border-color: #F37335; box-shadow: 0 2px 5px rgba(243, 115, 53, 0.3);
-        }
+        /* 時間帯ボタンは少し大きく */
+        .time-btn { padding: 15px 5px; font-size: 14px; height: 60px; flex-direction: column; line-height: 1.4; }
+        .sub-text { font-size: 11px; font-weight: normal; opacity: 0.8; }
 
         /* その他入力 */
-        .other-section { margin-top: 25px; }
-        textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; min-height: 80px; box-sizing: border-box; font-family: inherit; -webkit-appearance: none; }
+        textarea { width: 100%; padding: 15px; border: 1px solid #eee; background: #fafafa; border-radius: 12px; font-size: 14px; min-height: 80px; box-sizing: border-box; -webkit-appearance: none; font-family: inherit; }
+        textarea:focus { outline: none; border-color: #F37335; background: #fff; }
 
         /* 送信ボタン */
-        .submit-area { margin-top: 30px; position: sticky; bottom: 0; background: #fff; padding: 10px 0; }
         button#submit-btn {
-            width: 100%; padding: 18px; background: linear-gradient(to right, #FDC830, #F37335);
+            width: 100%; padding: 18px; margin-top: 10px;
+            background: linear-gradient(to right, #FDC830, #F37335);
             color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold;
-            cursor: pointer; box-shadow: 0 4px 15px rgba(243, 115, 53, 0.4); transition: transform 0.2s;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(243, 115, 53, 0.4);
         }
-        button#submit-btn:active { transform: scale(0.98); }
         button#submit-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
 
         #loading, #success-message { display: none; text-align: center; }
         #success-message { padding: 40px 20px; }
-        #success-message h2 { color: #F37335; margin-bottom: 15px; }
-        .close-button { background-color: #666; color: white; border: none; padding: 12px 30px; border-radius: 50px; margin-top: 20px; font-size: 14px; cursor: pointer; }
-        
-        /* アニメーション */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .container { animation: fadeIn 0.4s ease-out; }
+        .close-button { background-color: #666; color: white; border: none; padding: 12px 30px; border-radius: 50px; margin-top: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
 
     <div class="container" id="form-container">
-        <h1>サロン名の確認・詳細連絡</h1>
+        <h1>詳細の確認・電話連絡</h1>
         <div class="description">
-            この求人の「サロン名」と「詳細情報」を、<br>担当者よりお電話にて直接お伝えします。<br>
-            （所要時間10分前後）
+            担当者よりお電話にて<span class="highlight">サロン名</span>と<span class="highlight">詳細</span>をお伝えします。<br>
+            ご都合の良いパターンを選択してください。
         </div>
 
         <form id="callRequestForm">
             
-            <div class="anytime-wrapper">
-                <label class="anytime-label" id="anytime-label">
-                    <input type="checkbox" id="anytime-check" onchange="toggleAnytime()">
-                    <span class="anytime-icon">✨</span> 特に近い時間帯の希望なし
+            <div class="section-title">① お休み・空いている曜日は？</div>
+            <div class="btn-grid-4">
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="月曜日">
+                    <span>月</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="火曜日">
+                    <span>火</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="水曜日">
+                    <span>水</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="木曜日">
+                    <span>木</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="金曜日">
+                    <span>金</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="土曜日">
+                    <span>土</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="日祝">
+                    <span>日祝</span>
+                </label>
+                <label class="select-btn">
+                    <input type="checkbox" name="day_pattern" value="不定休・シフト">
+                    <span style="font-size:11px;">不定休</span>
                 </label>
             </div>
 
-            <div class="shortcut-section" id="shortcut-section">
-                <span class="section-label">▼ よくあるパターンを一括選択</span>
-                <div class="shortcut-grid">
-                    <div class="shortcut-btn" onclick="applyShortcut('night')">平日の夜 (20時〜)</div>
-                    <div class="shortcut-btn" onclick="applyShortcut('morning')">平日の午前中</div>
-                    <div class="shortcut-btn" onclick="applyShortcut('weekend')">土日いつでも</div>
-                    <div class="shortcut-btn" onclick="clearAll()">選択をクリア</div>
-                </div>
+            <div class="section-title">② 話しやすい時間帯は？</div>
+            <div class="btn-grid-2">
+                <label class="select-btn time-btn">
+                    <input type="checkbox" name="time_pattern" value="午前中（9:00~12:00）">
+                    <span>午前中<br><span class="sub-text">9:00~12:00</span></span>
+                </label>
+                <label class="select-btn time-btn">
+                    <input type="checkbox" name="time_pattern" value="午後（12:00~18:00）">
+                    <span>午後<br><span class="sub-text">12:00~18:00</span></span>
+                </label>
+                <label class="select-btn time-btn">
+                    <input type="checkbox" name="time_pattern" value="夜（18:00~20:00）">
+                    <span>夜<br><span class="sub-text">18:00~20:00</span></span>
+                </label>
+                <label class="select-btn time-btn">
+                    <input type="checkbox" name="time_pattern" value="帰宅後（20:00~23:00）">
+                    <span>帰宅後<br><span class="sub-text">20:00~23:00</span></span>
+                </label>
             </div>
 
-            <div class="schedule-section" id="schedule-section">
-                <span class="section-label">▼ または細かく指定する</span>
-                <div id="accordion-container">
-                    </div>
-            </div>
-
-            <div class="other-section">
-                <span class="section-label">その他・ご要望（任意）</span>
-                <textarea id="other_text" placeholder="例：今から30分以内なら出られます、など"></textarea>
+            <div class="section-title">その他（任意）</div>
+            <div style="margin-bottom: 30px;">
+                <textarea id="other_text" placeholder="例：今から10分後なら話せます。〇〇日は1日中空いています、など具体的な希望があればご記入ください。"></textarea>
             </div>
             
-            <div class="submit-area">
-                <button type="submit" id="submit-btn">送信してサロン名を確認する</button>
-            </div>
+            <button type="submit" id="submit-btn">送信してサロン名を確認する</button>
         </form>
         <div id="loading">送信中...</div>
     </div>
 
     <div class="container" id="success-message">
-        <h2>送信完了</h2>
-        <p>
+        <h2 style="color:#F37335; margin-bottom:15px;">受付完了</h2>
+        <p style="line-height:1.8; color:#555;">
             ありがとうございます。<br>
-            ご指定の時間帯に、担当者よりお電話にて<br>
-            <strong>『サロン名』</strong>と<strong>『詳細』</strong>をお伝えします。
+            ご希望に合わせて担当者よりご連絡いたします。
         </p>
         <button class="close-button" onclick="liff.closeWindow()">閉じる</button>
     </div>
 
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script>
-        const DAYS = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日', '祝日'];
-        const TIME_SLOTS = [
-            '午前中', '12:00～14:00', '14:00～16:00', '16:00～18:00', 
-            '18:00～20:00', '20:00～22:00', '22:00～24:00'
-        ];
-
-        // フォーム生成
-        function renderForm() {
-            const container = document.getElementById('accordion-container');
-            let html = '';
-            DAYS.forEach((day, i) => {
-                html += `
-                <div class="accordion-item" id="day-${i}">
-                    <div class="accordion-header" onclick="toggleAccordion(${i})">
-                        <div>
-                            <span class="day-label">${day}</span>
-                            <span class="status" id="status-${i}">選択あり</span>
-                        </div>
-                        <div class="accordion-icon">▼</div>
-                    </div>
-                    <div class="time-grid">
-                        ${TIME_SLOTS.map(time => `
-                            <label class="time-chip">
-                                <input type="checkbox" name="${day}" value="${time}" onchange="updateStatus(${i})">
-                                <span>${time}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
-        }
-
-        // アコーディオン開閉
-        window.toggleAccordion = (index) => {
-            document.getElementById(`day-${index}`).classList.toggle('active');
-        };
-
-        // ステータス更新
-        window.updateStatus = (index) => {
-            const parent = document.getElementById(`day-${index}`);
-            const checked = parent.querySelectorAll('input:checked').length;
-            const status = document.getElementById(`status-${index}`);
-            if (checked > 0) {
-                status.textContent = `${checked}件`;
-                status.classList.add('show');
-                parent.querySelector('.day-label').style.color = '#F37335';
-            } else {
-                status.classList.remove('show');
-                parent.querySelector('.day-label').style.color = '#333';
-            }
-            
-            // 詳細選択されたら「いつでもOK」は外す
-            if(checked > 0) {
-                document.getElementById('anytime-check').checked = false;
-                document.getElementById('anytime-label').classList.remove('checked');
-            }
-        };
-
-        // 「いつでもOK」のトグル
-        window.toggleAnytime = () => {
-            const isChecked = document.getElementById('anytime-check').checked;
-            const label = document.getElementById('anytime-label');
-            
-            if (isChecked) {
-                label.classList.add('checked');
-                // 他の選択をクリアして閉じる
-                clearAll(false); 
-            } else {
-                label.classList.remove('checked');
-            }
-        };
-
-        // ショートカット機能
-        window.applyShortcut = (type) => {
-            // まずクリア
-            document.querySelectorAll('.time-grid input').forEach(el => el.checked = false);
-            document.getElementById('anytime-check').checked = false;
-            document.getElementById('anytime-label').classList.remove('checked');
-
-            DAYS.forEach((day, i) => {
-                let shouldSelect = false;
-                const isWeekend = (day.includes('土') || day.includes('日') || day.includes('祝'));
-
-                if (type === 'night' && !isWeekend) shouldSelect = true; // 平日
-                if (type === 'morning' && !isWeekend) shouldSelect = true; // 平日
-                if (type === 'weekend' && isWeekend) shouldSelect = true; // 土日祝
-
-                if (shouldSelect) {
-                    // アコーディオンを開く
-                    document.getElementById(`day-${i}`).classList.add('active');
-                    
-                    // 時間を選択
-                    const inputs = document.querySelectorAll(`input[name="${day}"]`);
-                    inputs.forEach(input => {
-                        if (type === 'night' && (input.value.includes('20:00') || input.value.includes('22:00'))) input.checked = true;
-                        if (type === 'morning' && input.value === '午前中') input.checked = true;
-                        if (type === 'weekend') input.checked = true;
-                    });
-                    updateStatus(i);
-                } else {
-                    document.getElementById(`day-${i}`).classList.remove('active');
-                    updateStatus(i);
-                }
-            });
-        };
-
-        // クリア機能
-        window.clearAll = (keepAnytime = false) => {
-            document.querySelectorAll('.time-grid input').forEach(el => el.checked = false);
-            DAYS.forEach((_, i) => {
-                document.getElementById(`day-${i}`).classList.remove('active');
-                updateStatus(i);
-            });
-            if (!keepAnytime) {
-                document.getElementById('anytime-check').checked = false;
-                document.getElementById('anytime-label').classList.remove('checked');
-            }
-        };
-
-        // メイン処理
         async function main() {
-            renderForm();
-            const LIFF_ID = "2008066763-d13XV3gO";
+            const LIFF_ID = "2008066763-d13XV3gO"; 
             await liff.init({ liffId: LIFF_ID });
             
             if (!liff.isLoggedIn()) { liff.login(); return; }
 
-            // 自動メッセージ
+            // 自動メッセージ送信
             if (liff.isInClient()) {
-                liff.sendMessages([{ type: 'text', text: 'サロン名を確認する' }]).catch(console.error);
+                liff.sendMessages([{ type: 'text', text: 'サロン名を確認する' }]).catch(e=>{});
             }
 
             const params = new URLSearchParams(window.location.search);
@@ -290,35 +168,23 @@
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
-                let resultText = "";
-                
-                // いつでもOKの場合
-                if (document.getElementById('anytime-check').checked) {
-                    resultText = "【希望】特に近い時間帯の希望なし（いつでも可）\n";
-                } else {
-                    // 詳細選択の集計
-                    let hasSelection = false;
-                    DAYS.forEach(day => {
-                        const checked = Array.from(document.querySelectorAll(`input[name="${day}"]:checked`)).map(c => c.value);
-                        if (checked.length > 0) {
-                            resultText += `【${day}】${checked.join(', ')}\n`;
-                            hasSelection = true;
-                        }
-                    });
-                    
-                    // 何も選択されていない場合
-                    const otherText = document.getElementById('other_text').value.trim();
-                    if (!hasSelection && !otherText) {
-                        alert('希望の時間帯を選択するか、その他欄にご記入ください。');
-                        return;
-                    }
+                // データの集計
+                // 変更点: 曜日も複数選択(checkbox)になったため、Array.fromで取得
+                const dayPatterns = Array.from(document.querySelectorAll('input[name="day_pattern"]:checked')).map(el => el.value);
+                const timePatterns = Array.from(document.querySelectorAll('input[name="time_pattern"]:checked')).map(el => el.value);
+                const otherText = document.getElementById('other_text').value.trim();
+
+                // バリデーション（曜日か時間、どちらかは必須）
+                if (dayPatterns.length === 0 && timePatterns.length === 0 && !otherText) {
+                    alert('希望の曜日、または時間帯を選択してください。');
+                    return;
                 }
 
-                // その他の追記
-                const otherText = document.getElementById('other_text').value.trim();
-                if (otherText) {
-                    resultText += `【その他】${otherText}`;
-                }
+                // 送信テキストの作成
+                let resultText = "【希望連絡パターン】\n";
+                if (dayPatterns.length > 0) resultText += `■ 曜日: ${dayPatterns.join(', ')}\n`;
+                if (timePatterns.length > 0) resultText += `■ 時間帯: ${timePatterns.join(', ')}\n`;
+                if (otherText) resultText += `■ その他: ${otherText}`;
 
                 submitBtn.disabled = true;
                 submitBtn.textContent = "送信中...";
@@ -335,15 +201,11 @@
                             timeSlot: resultText
                         })
                     });
-
                     document.getElementById('form-container').style.display = 'none';
                     document.getElementById('success-message').style.display = 'block';
-                    // 画面トップへ
                     window.scrollTo(0, 0);
-
                 } catch (error) {
-                    console.error(error);
-                    alert('送信エラーが発生しました。');
+                    alert('送信エラー。もう一度お試しください。');
                     submitBtn.disabled = false;
                     submitBtn.textContent = "送信してサロン名を確認する";
                 } finally {
