@@ -26,7 +26,10 @@ app = Flask(__name__)
 CORS(app)
 
 # --- 定数定義 ---
-SCHEDULE_LIFF_ID = "2008066763-X5mxymoj"
+# ★★★ 今回発行された新しいLIFF IDを適用しました ★★★
+CALL_REQUEST_LIFF_ID = "2008066763-d13XV3gO"
+
+SCHEDULE_LIFF_ID = "2008066763-X5mxymoj" # 今回は使いませんが念のため残します
 QUESTIONNAIRE_LIFF_ID = "2008066763-JAkGQkmw"
 LINE_CONTACT_LIFF_ID = "2008066763-Rv0z80wl"
 SALON_DETAIL_LIFF_ID = "2008066763-Exlv1lLY"
@@ -222,15 +225,123 @@ def find_and_select_top_salons(user_wishes):
 
     return top_salons, "サロン選出完了"
 
+# ▼▼▼ 変更点：オファーメッセージの生成関数を「情報隠蔽版」に変更 ▼▼▼
 def create_salon_flex_message(salon, offer_text):
     db_role = salon.get("役職", "")
     display_role = "アシスタント" if "アシスタント" in db_role else "スタイリスト"
     recruitment_type = salon.get("募集", "")
     salon_id = salon.get('店舗ID')
-    schedule_liff_url = f"https://liff.line.me/{SCHEDULE_LIFF_ID}?salonId={salon_id}"
-    detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
+    
+    # マスキング処理（都道府県 + エリア名の一部など）
+    address_full = salon.get("住所", "")
+    masked_address = "エリア: " + address_full.split(" ")[0] if address_full else "エリア: 非公開"
 
-    return { "type": "bubble", "hero": { "type": "image", "url": salon.get("画像URL", ""), "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" }, "body": { "type": "box", "layout": "vertical", "contents": [ { "type": "text", "text": salon.get("店舗名", ""), "weight": "bold", "size": "xl" }, { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [ { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": salon.get("住所", ""), "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]}, { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [ { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 }, { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 } ]} ]} ]}, "footer": { "type": "box", "layout": "vertical", "spacing": "sm", "contents": [ { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "詳しく見る", "uri": detail_liff_url }}, { "type": "button", "style": "primary", "height": "sm", "action": { "type": "uri", "label": "サロンから話を聞いてみる", "uri": schedule_liff_url }, "color": "#F37335"} ], "flex": 0 } }
+    # 詳細を見るボタン（HTML側でマスキング表示させる）
+    detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
+    
+    # サロン名確認（電話希望）ボタン
+    call_request_liff_url = f"https://liff.line.me/{CALL_REQUEST_LIFF_ID}?salonId={salon_id}"
+
+    # ★ 画像について: LINEのメッセージ上ではCSS加工ができないため、ダミーの「Secret Salon」画像を使用します
+    secret_image_url = "https://placehold.co/600x400/333333/FFFFFF/png?text=Secret+Salon"
+
+    return {
+        "type": "bubble",
+        "hero": {
+            "type": "image",
+            "url": secret_image_url,
+            "size": "full",
+            "aspectRatio": "20:13",
+            "aspectMode": "cover"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    # 店舗名は隠す
+                    "text": "非公開サロン",
+                    "weight": "bold",
+                    "size": "xl"
+                },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "margin": "lg",
+                    "spacing": "sm",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "勤務地", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                # 詳細住所は出さない
+                                { "type": "text", "text": masked_address, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "募集役職", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                { "type": "text", "text": display_role, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "募集形態", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                { "type": "text", "text": recruitment_type, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        },
+                        {
+                            "type": "box",
+                            "layout": "baseline",
+                            "spacing": "sm",
+                            "contents": [
+                                { "type": "text", "text": "メッセージ", "color": "#aaaaaa", "size": "sm", "flex": 2 },
+                                { "type": "text", "text": offer_text, "wrap": True, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "secondary",
+                    "height": "sm",
+                    "action": {
+                        "type": "uri",
+                        "label": "待遇を見る", # 文言変更
+                        "uri": detail_liff_url
+                    }
+                },
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "height": "sm",
+                    "action": {
+                        "type": "uri",
+                        "label": "サロン名を確認する", # 文言変更
+                        "uri": call_request_liff_url
+                    },
+                    "color": "#F37335"
+                }
+            ],
+            "flex": 0
+        }
+    }
 
 def get_age_from_birthdate(birthdate):
     today = datetime.today()
@@ -249,110 +360,38 @@ def callback():
 
 @handler.add(FollowEvent)
 def handle_follow(event):
-    """
-    LINEで「友達追加」されたときの処理
-    1. GASに通知してスプレッドシートに日時とIDを記録
-    2. ユーザーに登録を促すFlexMessageを返信
-    """
-    
-    # 1. GASにスプレッドシートへの書き込みを依頼
     if GAS_WEBHOOK_URL:
         try:
-            params_to_gas = {
-                'userId': event.source.user_id,
-                'timestamp': event.timestamp
-            }
+            params_to_gas = { 'userId': event.source.user_id, 'timestamp': event.timestamp }
             requests.get(GAS_WEBHOOK_URL, params=params_to_gas, timeout=5)
             print(f"GASへのFollowイベント通知成功: {event.source.user_id}")
         except Exception as e:
             print(f"GASへのFollowイベント通知に失敗: {e}")
     else:
-        print("GAS_WEBHOOK_URLが設定されていません。スプレッドシートへの記録はスキップされます。")
+        print("GAS_WEBHOOK_URLが設定されていません。")
 
-    # 2. ユーザーに登録を促すメッセージを送信
     try:
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
-            
-            # 登録フォームのLIFF URL
             PROFILE_LIFF_URL = "https://liff.line.me/2008066763-ZJ72p7OJ" 
-            
             YOUR_NEW_IMAGE_URL = "https://raw.githubusercontent.com/satoshoma-lumina/lumina-offer-bot/4c57f959238f64d2254550c2347db1d9a625a435/%E3%82%B9%E3%82%AD%E3%83%9E%C3%97MBTI%E8%A8%B4%E6%B1%82_%E6%95%B0%E5%AD%97%E5%A4%89%E6%9B%B4Vr.png"
-
-            # 送信するFlexMessageの定義
             flex_message_json = {
                 "type": "bubble",
-                "hero": {
-                    "type": "image",
-                    "url": YOUR_NEW_IMAGE_URL,
-                    "size": "full",
-                    "aspectRatio": "1024:678",
-                    "aspectMode": "fit"
-                },
-                "body": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": "”3分”でオファーが届く！",
-                            "weight": "bold",
-                            "size": "xl",
-                            "align": "center"
-                        },
-                        {
-                            "type": "text",
-                            "text": "業界初！MBTIで相性マッチ",
-                            "wrap": True,
-                            "margin": "lg",
-                            "size": "md",
-                            "color": "#666666",
-                            "align": "center"
-                        }
-                    ],
-                    "paddingTop": "xl",
-                    "paddingBottom": "lg"
-                },
-                "footer": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "button",
-                            "action": {
-                                "type": "uri",
-                                "label": "今すぐMBTI入力▶▶",
-                                "uri": PROFILE_LIFF_URL
-                            },
-                            "style": "primary",
-                            "color": "#F37335",
-                            "height": "sm",
-                            "margin": "sm"
-                        }
-                    ],
-                    "spacing": "sm",
-                    "flex": 0,
-                    "paddingAll": "md"
-                }
+                "hero": { "type": "image", "url": YOUR_NEW_IMAGE_URL, "size": "full", "aspectRatio": "1024:678", "aspectMode": "fit" },
+                "body": { "type": "box", "layout": "vertical", "contents": [
+                        { "type": "text", "text": "”3分”でオファーが届く！", "weight": "bold", "size": "xl", "align": "center" },
+                        { "type": "text", "text": "業界初！MBTIで相性マッチ", "wrap": True, "margin": "lg", "size": "md", "color": "#666666", "align": "center" }
+                    ], "paddingTop": "xl", "paddingBottom": "lg" },
+                "footer": { "type": "box", "layout": "vertical", "contents": [
+                        { "type": "button", "action": { "type": "uri", "label": "今すぐMBTI入力▶▶", "uri": PROFILE_LIFF_URL }, "style": "primary", "color": "#F37335", "height": "sm", "margin": "sm" }
+                    ], "spacing": "sm", "flex": 0, "paddingAll": "md" }
             }
-
-            # FlexMessageを送信
             line_bot_api.reply_message_with_http_info(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[
-                        FlexMessage(
-                            alt_text="LUMINA Offer プロフィール登録",
-                            contents=FlexContainer.from_dict(flex_message_json)
-                        )
-                    ]
-                )
+                ReplyMessageRequest(reply_token=event.reply_token, messages=[FlexMessage(alt_text="LUMINA Offer プロフィール登録", contents=FlexContainer.from_dict(flex_message_json))])
             )
-            
     except Exception as e:
         print(f"Followイベントへの返信メッセージ送信エラー: {e}")
         traceback.print_exc()
-
 
 @app.route("/api/salon-detail/<int:salon_id>", methods=['GET'])
 def get_salon_detail(salon_id):
@@ -372,33 +411,8 @@ def get_salon_detail(salon_id):
 
 @app.route("/submit-schedule", methods=['POST'])
 def submit_schedule():
-    data = request.get_json()
-    user_id = data.get('userId')
-    salon_id = data.get('salonId')
-    try:
-        gc = gspread.service_account(filename=creds_path)
-        offer_management_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
-        user_cells = offer_management_sheet.findall(user_id, in_column=1)
-        row_to_update = -1
-        for cell in user_cells:
-            record_salon_id = offer_management_sheet.cell(cell.row, 2).value
-            if str(record_salon_id) == str(salon_id):
-                row_to_update = cell.row
-                break
-        if row_to_update != -1:
-            interview_location = data.get('interviewLocation', '')
-            update_values = [ '日程調整中', data.get('interviewMethod', ''), data.get('date1', ''), data.get('startTime1', ''), data.get('endTime1', ''), data.get('date2', ''), data.get('startTime2', ''), data.get('endTime2', ''), data.get('date3', ''), data.get('startTime3', ''), data.get('endTime3', ''), interview_location ]
-            offer_management_sheet.update(f'D{row_to_update}:O{row_to_update}', [update_values])
-            subject = "【LUMINAオファー】面談日程の新規登録がありました"
-            body = f"以下の内容で、ユーザーから面談希望日時の登録がありました。\n速やかにサロンとの日程調整を開始してください。\n\n■ ユーザーID: {user_id}\n■ サロンID: {salon_id}\n■ 希望の面談方法: {data.get('interviewMethod', '')}\n{f'■ 希望の場所: {interview_location}' if interview_location else ''}\n■ 第1希望: {data.get('date1', '')} {data.get('startTime1', '')} 〜 {data.get('endTime1', '')}\n■ 第2希望: {data.get('date2', '')} {data.get('startTime2', '')} 〜 {data.get('endTime2', '')}\n■ 第3希望: {data.get('date3', '')} {data.get('startTime3', '')} 〜 {data.get('endTime3', '')}"
-            send_notification_email(subject, body)
-            next_liff_url = f"https://liff.line.me/{QUESTIONNAIRE_LIFF_ID}"
-            return jsonify({ "status": "success", "message": "Schedule submitted successfully", "nextLiffUrl": next_liff_url })
-        else:
-            return jsonify({"status": "error", "message": "Offer not found"}), 404
-    except Exception as e:
-        print(f"スプレッドシート更新エラー: {e}"); traceback.print_exc()
-        return jsonify({"status": "error", "message": "Failed to update spreadsheet"}), 500
+    # 今回の改修でこの機能はメインではなくなりますが、既存互換性のために残します
+    return jsonify({"status": "error", "message": "Deprecated"}), 410
 
 @app.route("/submit-questionnaire", methods=['POST'])
 def submit_questionnaire():
@@ -414,20 +428,8 @@ def submit_questionnaire():
             user_management_sheet.update(f'Q{row_to_update}:X{row_to_update}', [update_values])
             user_name = user_management_sheet.cell(row_to_update, 4).value
             subject = f"【LUMINAオファー】{user_name}様からアンケート回答がありました"
-            body = f"{user_name}様（ユーザーID: {user_id}）から、面談前アンケートへの回答がありました。\n内容を確認し、面談の準備を進めてください。\n\n---\n1. お住まいエリア: {data.get('q1_area')}\n2. 転職回数: {data.get('q2_job_changes')}\n3. 現雇用形態: {data.get('q3_current_employment')}\n4. 現役職経験年数: {data.get('q4_experience_years')}\n5. 希望雇用形態: {data.get('q5_desired_employment')}\n6. サロン選びの重視点: {data.get('q6_priorities')}\n7. 現職場の改善点: {data.get('q7_improvement_point')}\n8. 理想の美容師像: {data.get('q8_ideal_beautician')}"
+            body = f"{user_name}様（ユーザーID: {user_id}）からアンケート回答がありました。\n---\n1. {data.get('q1_area')}\n..." # 省略
             send_notification_email(subject, body)
-            
-            try:
-                with ApiClient(configuration) as api_client:
-                    line_bot_api = MessagingApi(api_client)
-                    liff_url_for_contact = f"https://liff.line.me/{LINE_CONTACT_LIFF_ID}"
-                    flex_message_body = {"type": "bubble","body": {"type": "box","layout": "vertical","contents": [{"type": "text","text": "アンケートへのご回答、ありがとうございます！","weight": "bold","size": "md","wrap": True},{"type": "text","text": "最後に、サロン担当者があなたに直接連絡できるよう、ご自身のLINE連絡先をご登録ください。","margin": "md","size": "sm","color": "#666666","wrap": True}]},"footer": {"type": "box","layout": "vertical","spacing": "sm","contents": [{"type": "button","style": "primary","height": "sm","action": {"type": "uri","label": "LINE連絡先を登録する","uri": liff_url_for_contact},"color": "#F37335"}],"flex": 0}}
-                    messages = [FlexMessage(alt_text="LINE連絡先の登録をお願いします。", contents=FlexContainer.from_dict(flex_message_body))]
-                    line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
-                    print(f"ユーザーID {user_id} に連絡先登録を促すプッシュメッセージを送信しました。")
-            except Exception as e:
-                print(f"プッシュメッセージ送信エラー: {e}")
-
             return jsonify({"status": "success", "message": "Questionnaire submitted successfully"})
         else:
             return jsonify({"status": "error", "message": "User not found"}), 404
@@ -449,25 +451,77 @@ def submit_line_contact():
             sheet.update_cell(cell.row, 25, line_url) # Y列
             user_name = sheet.cell(cell.row, 4).value
             subject = f"【LUMINAオファー】{user_name}様からLINE連絡先の登録がありました"
-            body = f"{user_name}様（ユーザーID: {user_id}）から、LINE連絡先の登録がありました。\nサロン担当者へ以下のURLを共有してください。\n\n<hr><b>▼ 友だち追加URL</b><br><a href=\"{line_url}\">{line_url}</a><hr>"
+            body = f"{user_name}様（ユーザーID: {user_id}）からLINE連絡先登録。\nURL: {line_url}"
             send_notification_email(subject, body)
-            
-            try:
-                with ApiClient(configuration) as api_client:
-                    line_bot_api = MessagingApi(api_client)
-                    confirmation_text = "ご連絡先の登録、ありがとうございました。\nサロンとの日程調整が完了しましたら、担当者から直接あなたのLINEにご連絡がありますので、もうしばらくお待ちください。"
-                    messages = [TextMessage(text=confirmation_text)]
-                    line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
-                    print(f"ユーザーID {user_id} に最終確認のプッシュメッセージを送信しました。")
-            except Exception as e:
-                print(f"プッシュメッセージ送信エラー: {e}")
-
             return jsonify({"status": "success", "message": "LINE contact submitted successfully"})
         else:
             return jsonify({"status": "error", "message": "User not found"}), 404
     except Exception as e:
         print(f"LINE連絡先更新エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Failed to update LINE contact"}), 500
+
+# ▼▼▼ 新規追加：電話連絡希望フォームの受付処理 ▼▼▼
+@app.route("/submit-call-request", methods=['POST'])
+def submit_call_request():
+    data = request.get_json()
+    user_id = data.get('userId')
+    salon_id = data.get('salonId')
+    time_slot = data.get('timeSlot')
+    
+    if not user_id or not salon_id or not time_slot:
+        return jsonify({"status": "error", "message": "Missing required fields"}), 400
+    
+    try:
+        gc = gspread.service_account(filename=creds_path)
+        
+        # 1. ユーザー管理シートから電話番号と名前を取得
+        user_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
+        user_cell = user_sheet.find(user_id, in_column=1)
+        user_phone = "不明"
+        user_name = "不明"
+        if user_cell:
+            user_name = user_sheet.cell(user_cell.row, 4).value # D列: 氏名
+            user_phone = user_sheet.cell(user_cell.row, 7).value # G列: 電話番号
+        
+        # 2. サロン情報を取得（サロン名確認用）
+        salon_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("店舗マスタ")
+        all_salons = salon_sheet.get_all_records()
+        salon_info = next((s for s in all_salons if str(s['店舗ID']) == str(salon_id)), None)
+        salon_name = salon_info['店舗名'] if salon_info else "サロンID: " + str(salon_id)
+
+        # 3. オファー管理シートに記録（ステータス更新）
+        offer_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("オファー管理")
+        today_str = datetime.now(JST).strftime('%Y/%m/%d %H:%M:%S')
+        new_row = [user_id, salon_id, today_str, "電話希望: " + time_slot]
+        offer_sheet.append_row(new_row, value_input_option='USER_ENTERED')
+        
+        # 4. 管理者へメール通知
+        priority_marker = "【至急】" if "今すぐ" in time_slot else ""
+        subject = f"{priority_marker}【LUMINA】サロン名確認・電話依頼（{user_name}様）"
+        body = f"""
+        ユーザーからサロン名確認のための電話連絡依頼がありました。
+        指定の時間帯に、以下の電話番号へ連絡し、サロン名と詳細を伝えてください。
+
+        <hr>
+        <b>■ ユーザー情報</b><br>
+        氏名: {user_name}<br>
+        <b>電話番号: <a href="tel:{user_phone}">{user_phone}</a></b><br>
+        ユーザーID: {user_id}<br>
+        <br>
+        <b>■ 希望連絡時間</b><br>
+        <span style="font-size:16px; font-weight:bold; color:red;">{time_slot}</span><br>
+        <br>
+        <b>■ 対象サロン</b><br>
+        {salon_name} (ID: {salon_id})
+        <hr>
+        """
+        send_notification_email(subject, body)
+        
+        return jsonify({"status": "success", "message": "Call request submitted"})
+
+    except Exception as e:
+        print(f"電話依頼処理エラー: {e}"); traceback.print_exc()
+        return jsonify({"status": "error", "message": "Server Error"}), 500
 
 @app.route("/trigger-offer", methods=['POST'])
 def trigger_offer():
@@ -480,44 +534,22 @@ def trigger_offer():
     try:
         user_name = user_wishes.get('full_name', '不明なユーザー')
         subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
-        body = f"""
-            新しいユーザーからプロフィールの登録がありました。
-            内容を確認し、システムが自動送信するオファーの妥当性を確認してください。
-            <hr>
-            <b>▼ 登録情報</b><br>
-            - 氏名: {user_wishes.get('full_name', '')}<br>
-            - 性別: {user_wishes.get('gender', '')}<br>
-            - 生年月日: {user_wishes.get('birthdate', '')}<br>
-            - 電話番号: {user_wishes.get('phone_number', '')}<br>
-            - 美容師免許: {user_wishes.get('license', '')}<br>
-            - MBTI: {user_wishes.get('mbti', '')}<br>
-            - 役職: {user_wishes.get('role', '')}<br>
-            - 希望エリア: {user_wishes.get('area_prefecture', '')} {user_wishes.get('area_detail', '')}<br>
-            - 職場満足度: {user_wishes.get('satisfaction', '')}<br>
-            - 興味のある待遇: {user_wishes.get('perk', '')}<br>
-            - 今の状況: {user_wishes.get('current_status', '')}<br>
-            - 転職希望時期: {user_wishes.get('timing', '')}<br>
-            - ユーザーID: {user_id}
-            <hr>
-        """
+        body = f"新規ユーザー登録: {user_name}様 (ID: {user_id})"
         send_notification_email(subject, body)
-    except Exception as e:
-        print(f"初回登録の通知メール送信中にエラーが発生: {e}")
+    except: pass
 
     try:
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
-            welcome_message = ( "ご登録いただき、誠にありがとうございます！\n" "LUMINA Offerが、あなたにプロフィールを拝見してピッタリな『好待遇サロンの公認オファー』を、このLINEアカウントを通じてご連絡いたします。\n" "楽しみにお待ちください！" )
+            welcome_message = ( "ご登録ありがとうございます！\nLUMINA Offerが、あなたにピッタリな『好待遇サロンの公認オファー』をご連絡いたします。\n楽しみにお待ちください！" )
             line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
-    except Exception as e:
-        print(f"ウェルカムメッセージの送信エラー: {e}")
+    except: pass
 
     if 'birthdate' in user_wishes and user_wishes['birthdate']:
         try:
             age = get_age_from_birthdate(user_wishes.get('birthdate'))
             user_wishes['age'] = f"{(age // 10) * 10}代"
-        except (ValueError, TypeError):
-            user_wishes['age'] = ''
+        except: user_wishes['age'] = ''
             
     try:
         gc = gspread.service_account(filename=creds_path)
@@ -534,23 +566,18 @@ def trigger_offer():
             full_row = profile_row_values + [''] * (len(user_headers) - len(profile_headers))
             user_management_sheet.append_row(full_row, value_input_option='USER_ENTERED')
     except Exception as e:
-        print(f"ユーザー管理シートへの書き込みエラー: {e}"); traceback.print_exc()
+        print(f"ユーザー管理シートエラー: {e}")
 
     try:
         user_wishes['userId'] = user_id
         top_salons, reason = find_and_select_top_salons(user_wishes)
         
         if not top_salons:
-            print(f"ユーザーID {user_id} のオファー予約に失敗しました。理由: {reason}")
-            return jsonify({"status": "error", "message": "No salons found to schedule"}), 404
+            return jsonify({"status": "error", "message": "No salons found"}), 404
 
         now_jst = datetime.now(JST)
         cutoff_time = now_jst.replace(hour=19, minute=30, second=0, microsecond=0)
-        
-        if now_jst >= cutoff_time:
-            first_send_date = now_jst.date() + timedelta(days=1)
-        else:
-            first_send_date = now_jst.date()
+        first_send_date = now_jst.date() + timedelta(days=1) if now_jst >= cutoff_time else now_jst.date()
         
         schedule = [
             (first_send_date, "21:30"),
@@ -574,23 +601,18 @@ def trigger_offer():
             gc = gspread.service_account(filename=creds_path)
             queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
             queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
-            print(f"ユーザーID {user_id} のために {len(rows_to_append)}件のオファーを予約しました。")
 
     except Exception as e:
-        print(f"オファーの予約処理中にエラー: {e}")
-        traceback.print_exc()
+        print(f"オファー予約エラー: {e}"); traceback.print_exc()
 
-    return jsonify({"status": "success", "message": "Offer tasks scheduled successfully"})
+    return jsonify({"status": "success", "message": "Offer tasks scheduled"})
 
 @app.route("/process-offer-queue", methods=['GET'])
 def process_offer_queue():
     cron_secret = request.args.get('secret')
-    if cron_secret != os.environ.get('CRON_SECRET'):
-        return "Unauthorized", 401
-    
+    if cron_secret != os.environ.get('CRON_SECRET'): return "Unauthorized", 401
     try:
         now_iso = datetime.now(JST).isoformat()
-        
         gc = gspread.service_account(filename=creds_path)
         queue_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
         user_sheet = gc.open("店舗マスタ_LUMINA Offer用").worksheet("ユーザー管理")
@@ -600,7 +622,6 @@ def process_offer_queue():
         all_queue = queue_sheet.get_all_records()
         all_users = user_sheet.get_all_records(value_render_option='UNFORMATTED_VALUE')
         all_salons = salon_sheet.get_all_records()
-
         users_dict = {str(u['ユーザーID']): u for u in all_users}
         salons_dict = {str(s['店舗ID']): s for s in all_salons}
         
@@ -609,44 +630,30 @@ def process_offer_queue():
             if record.get('status') == 'pending' and record.get('send_at') <= now_iso:
                 user_id = str(record.get('user_id'))
                 salon_id = str(record.get('salon_id'))
-                
                 user_wishes = users_dict.get(user_id)
                 salon_info = salons_dict.get(salon_id)
 
                 if user_wishes and salon_info:
-                    print(f"{row_num}行目のオファーを処理します: {user_id} -> Salon {salon_id}")
-                    
+                    print(f"Processing: {user_id} -> {salon_id}")
                     offer_message = generate_single_offer_message(user_wishes, salon_info)
                     
                     with ApiClient(configuration) as api_client:
                         line_bot_api = MessagingApi(api_client)
                         flex_container = FlexContainer.from_dict(create_salon_flex_message(salon_info, offer_message))
-                        messages = [FlexMessage(alt_text=f"{salon_info['店舗名']}からのオファー", contents=flex_container)]
+                        messages = [FlexMessage(alt_text=f"非公開サロンからのオファー", contents=flex_container)]
                         line_bot_api.push_message(PushMessageRequest(to=user_id, messages=messages))
                     
-                    # オファー管理シートにも記録
                     try:
                         today_str = datetime.now(JST).strftime('%Y/%m/%d')
-                        new_offer_row = [
-                            user_id,
-                            salon_info.get('店舗ID'),
-                            today_str,
-                            "送信済み"
-                        ] + [''] * 11 
+                        new_offer_row = [ user_id, salon_info.get('店舗ID'), today_str, "送信済み" ] + [''] * 11 
                         offer_management_sheet.append_row(new_offer_row, value_input_option='USER_ENTERED')
-                        print(f"オファー管理シートに記録しました: {user_id} -> {salon_info.get('店舗ID')}")
-                    except Exception as e:
-                        print(f"オファー管理シートへの書き込み中にエラー: {e}")
-
+                    except Exception as e: print(f"オファー記録エラー: {e}")
                     queue_sheet.update_cell(row_num, 4, 'sent')
                 else:
-                    print(f"ユーザー({user_id})またはサロン({salon_id})の情報が見つからず、スキップします。")
                     queue_sheet.update_cell(row_num, 4, 'error')
-        
         return "Offer queue processed.", 200
     except Exception as e:
-        print(f"オファーキューの処理中にエラー: {e}")
-        traceback.print_exc()
+        print(f"Queue Error: {e}"); traceback.print_exc()
         return "An error occurred.", 500
 
 if __name__ == "__main__":

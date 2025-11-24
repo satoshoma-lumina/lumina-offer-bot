@@ -12,56 +12,37 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; background-color: #f7f7f7; color: #333; }
         .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding-bottom: 100px; }
-        .gallery { width: 100%; }
-        .main-image img { width: 100%; height: 250px; object-fit: cover; }
+        .gallery { width: 100%; overflow: hidden; background: #000; position: relative; }
+        
+        /* ▼▼▼ 変更点：画像をぼかすスタイル ▼▼▼ */
+        .blur-effect {
+            filter: blur(15px); /* ぼかしの強さ */
+            -webkit-filter: blur(15px);
+            transform: scale(1.2); /* 端の白い部分が見えないように拡大 */
+            opacity: 0.8;
+        }
+        /* ▲▲▲ 変更点ここまで ▲▲▲ */
+
+        .main-image { overflow: hidden; }
+        .main-image img { width: 100%; height: 250px; object-fit: cover; transition: opacity 0.3s; }
+        
         .thumbnails { display: flex; gap: 5px; padding: 10px; }
         .thumbnails img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid transparent; }
+        
         .content { padding: 10px 20px; }
         h1 { font-size: 24px; margin-top: 0; }
+        .catchphrase { font-size: 16px; font-weight: bold; color: #F37335; margin-bottom: 20px; }
         .description { line-height: 1.7; margin-bottom: 30px; white-space: pre-wrap; }
-        .info-section { margin-bottom: 25px; }
-        .info-section p { margin: 0; line-height: 1.6; white-space: pre-wrap; }
-        .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 600px; margin: 0 auto; background-color: rgba(255, 255, 255, 0.9); padding: 15px 20px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
-        #loading, #error { text-align: center; padding: 50px; } #error { color: red; }
         
-        /* ▼▼▼▼▼ ここからが変更点 ▼▼▼▼▼ */
-        .thumbnails img.active {
-            border-color: #F37335; /* グラデーションの濃いオレンジ */
-        }
-        .catchphrase {
-            font-size: 16px;
-            font-weight: bold;
-            color: #F37335; /* グラデーションの濃いオレンジ */
-            margin-bottom: 20px;
-        }
-        .info-section h2 {
-            font-size: 18px;
-            border-bottom: 2px solid #F37335; /* グラデーションの濃いオレンジ */
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .action-button {
-            width: 100%;
-            padding: 15px;
-            background-image: linear-gradient(to right, #FDC830, #F37335);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            text-decoration: none;
-            display: block;
-            transition: opacity 0.3s;
-        }
-        .action-button:hover {
-            opacity: 0.9;
-        }
-        /* ▲▲▲▲▲ 変更点ここまで ▲▲▲▲▲ */
+        .info-section { margin-bottom: 25px; }
+        .info-section h2 { font-size: 18px; border-bottom: 2px solid #F37335; padding-bottom: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .info-section p { margin: 0; line-height: 1.6; white-space: pre-wrap; }
+        
+        .footer-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 600px; margin: 0 auto; background-color: rgba(255, 255, 255, 0.9); padding: 15px 20px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
+        .action-button { width: 100%; padding: 15px; background-image: linear-gradient(to right, #FDC830, #F37335); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; text-align: center; text-decoration: none; display: block; transition: opacity 0.3s; }
+        .action-button:hover { opacity: 0.9; }
+        
+        #loading, #error { text-align: center; padding: 50px; } #error { color: red; }
     </style>
 </head>
 <body>
@@ -73,7 +54,7 @@
         <div class="container">
             <div class="gallery">
                 <div class="main-image">
-                    <img id="main-photo" src="" alt="メイン写真">
+                    <img id="main-photo" class="blur-effect" src="" alt="メイン写真">
                 </div>
                 <div class="thumbnails" id="thumbnails-container"></div>
             </div>
@@ -106,7 +87,7 @@
             </div>
         </div>
         <div class="footer-nav">
-            <a id="schedule-button" href="#" class="action-button">このサロンから話を聞いてみる</a>
+            <a id="schedule-button" href="#" class="action-button">サロン名を確認する</a>
         </div>
     </div>
 
@@ -114,7 +95,8 @@
     <script>
         async function main() {
             const liffId = "2008066763-Exlv1lLY";
-            const SCHEDULE_LIFF_ID = "2008066763-X5mxymoj";
+            // ★★★ ステップ2で作成した「電話連絡希望フォーム」のLIFF IDを設定 ★★★
+            const CALL_REQUEST_LIFF_ID = "2008066763-d13XV3gO";
             
             const loadingDiv = document.getElementById('loading');
             const errorDiv = document.getElementById('error');
@@ -125,17 +107,19 @@
                 const params = new URLSearchParams(window.location.search);
                 const salonId = params.get('salonId');
 
-                if (!salonId) {
-                    throw new Error("サロンIDが見つかりません。");
-                }
+                if (!salonId) { throw new Error("サロンIDが見つかりません。"); }
 
                 const response = await fetch(`https://lumina-offer-bot-new.onrender.com/api/salon-detail/${salonId}`);
-                if (!response.ok) {
-                    throw new Error("サロン情報の取得に失敗しました。");
-                }
+                if (!response.ok) { throw new Error("サロン情報の取得に失敗しました。"); }
                 const salon = await response.json();
 
-                document.getElementById('salon-name').textContent = salon['店舗名'] || '情報なし';
+                // ▼▼▼ 変更点：サロン名と住所を隠す処理 ▼▼▼
+                const address = salon['住所'] || '';
+                const areaName = address.split(' ')[0] || 'エリア非公開'; // 住所の最初の部分（県や区）だけ抽出
+                
+                document.getElementById('salon-name').textContent = `非公開サロン（${areaName}）`;
+                // ▲▲▲ 変更点ここまで ▲▲▲
+
                 document.getElementById('salon-catchphrase').textContent = salon['サロンの魅力キャッチコピー'] || '';
                 document.getElementById('salon-description').textContent = salon['サロン紹介文'] || '詳細情報はありません。';
                 document.getElementById('salon-salary').textContent = salon['給与詳細'] || '詳細情報はありません。';
@@ -151,6 +135,8 @@
                 photoUrls.forEach((url, index) => {
                     const img = document.createElement('img');
                     img.src = url;
+                    // サムネイルにもぼかしクラスを追加
+                    img.classList.add('blur-effect'); 
                     if (index === 0) img.classList.add('active');
                     img.addEventListener('click', () => {
                         mainPhoto.src = url;
@@ -161,7 +147,8 @@
                 });
 
                 const scheduleButton = document.getElementById('schedule-button');
-                scheduleButton.href = `https://liff.line.me/${SCHEDULE_LIFF_ID}?salonId=${salonId}`;
+                // リンク先を電話連絡希望フォームに変更
+                scheduleButton.href = `https://liff.line.me/${CALL_REQUEST_LIFF_ID}?salonId=${salonId}`;
 
                 loadingDiv.style.display = 'none';
                 appDiv.style.display = 'block';
