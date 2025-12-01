@@ -193,7 +193,7 @@ monthSelect.addEventListener('change', updateDays);
 async function main() {
 setupBirthdateSelectors(); // プルダウンを初期化
 const liffId = "2008066763-ZJ72p7OJ";
-const endpointUrl = "https://lumina-offer-bot.onrender.com/trigger-offer";
+const endpointUrl = "https://lumina-offer-bot-new.onrender.com/trigger-offer";
 try {
 await liff.init({ liffId: liffId });
 if (!liff.isLoggedIn()) { liff.login(); return; }
