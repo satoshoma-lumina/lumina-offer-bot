@@ -6,15 +6,16 @@ import re
 from datetime import datetime, timedelta, timezone
 import traceback
 import requests
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import threading  # ★追加: バックグラウンド処理用
+import threading  # バックグラウンド処理用
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+# ★SendGridを復活
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
@@ -48,32 +49,27 @@ GAS_WEBHOOK_URL = os.environ.get('GAS_WEBHOOK_URL')
 
 # --- Helper Functions ---
 
+# ★SendGrid用の送信関数に戻しました★
 def send_notification_email(subject, body):
-    # 環境変数の取得
     from_email = os.environ.get('MAIL_USERNAME')
-    password = os.environ.get('MAIL_PASSWORD')
-    to_email = SATO_EMAIL
-
-    if not from_email or not password:
-        print("メール送信用の環境変数(MAIL_USERNAME, MAIL_PASSWORD)が設定されていません。")
+    api_key = os.environ.get('SENDGRID_API_KEY')
+    
+    if not from_email or not api_key:
+        print("メール送信用の環境変数(MAIL_USERNAME, SENDGRID_API_KEY)が設定されていません。")
         return
 
+    # 改行をHTMLタグに変換
+    message = Mail(
+        from_email=from_email,
+        to_emails=SATO_EMAIL,
+        subject=subject,
+        html_content=body.replace('\n', '<br>')
+    )
+    
     try:
-        # メールデータの作成
-        msg = MIMEMultipart()
-        msg['From'] = from_email
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body.replace('\n', '<br>'), 'html'))
-
-        # GmailのSMTPサーバーに接続 (ポート587, STARTTLS, タイムアウト設定)
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
-        server.starttls()
-        server.login(from_email, password)
-        server.send_message(msg)
-        server.quit()
-        
-        print(f"メール送信成功: {subject}")
+        sg = SendGridAPIClient(api_key)
+        response = sg.send(message)
+        print(f"メール送信成功: {subject} (Status: {response.status_code})")
     except Exception as e:
         print(f"メール送信エラー: {e}")
         traceback.print_exc()
@@ -308,10 +304,10 @@ def process_offer_background(user_id, user_wishes):
     時間のかかる処理（メール、スプレッドシート、AI、LINE）をバックグラウンドで実行
     """
     print(f"Start background process for user: {user_id}")
-    # アプリケーションコンテキスト内で実行（念のため）
+    # アプリケーションコンテキスト内で実行
     with app.app_context():
         try:
-            # 1. 管理者へメール通知
+            # 1. 管理者へメール通知 (SendGrid使用)
             try:
                 user_name = user_wishes.get('full_name', '不明なユーザー')
                 subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
@@ -386,7 +382,6 @@ def process_offer_background(user_id, user_wishes):
                             rows_to_append.append(new_row)
 
                     if rows_to_append:
-                        # gspreadインスタンスを再取得（セッション切れ防止）
                         gc_q = gspread.service_account(filename=creds_path)
                         queue_sheet = gc_q.open("店舗マスタ_LUMINA Offer用").worksheet("Offer Queue")
                         queue_sheet.append_rows(rows_to_append, value_input_option='USER_ENTERED')
@@ -555,7 +550,6 @@ def submit_call_request():
         print(f"電話依頼処理エラー: {e}"); traceback.print_exc()
         return jsonify({"status": "error", "message": "Server Error"}), 500
 
-# ★★★ 変更点: バックグラウンド処理への引き渡し ★★★
 @app.route("/trigger-offer", methods=['POST'])
 def trigger_offer():
     data = request.get_json()
