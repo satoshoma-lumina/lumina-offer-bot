@@ -322,17 +322,45 @@ def process_offer_background(user_id, user_wishes):
     # アプリケーションコンテキスト内で実行
     with app.app_context():
         try:
-            # 1. 管理者へメール通知 (Brevo API使用)
+            # 1. 年齢計算（メールに載せるため、最初に計算する）
+            if 'birthdate' in user_wishes and user_wishes['birthdate']:
+                try:
+                    age = get_age_from_birthdate(user_wishes.get('birthdate'))
+                    user_wishes['age'] = f"{(age // 10) * 10}代"
+                except: user_wishes['age'] = ''
+
+            # 2. 管理者へメール通知 (Brevo API使用)
             try:
                 user_name = user_wishes.get('full_name', '不明なユーザー')
                 subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
-                body = f"新規ユーザー登録: {user_name}様 (ID: {user_id})"
+                
+                # ★修正点: 全ての入力情報をメール本文に含める
+                body = f"""
+新規ユーザー登録がありました。内容を確認してください。
+
+■ 基本情報
+・氏名: {user_wishes.get('full_name')}
+・ユーザーID: {user_id}
+・性別: {user_wishes.get('gender')}
+・生年月日: {user_wishes.get('birthdate')} ({user_wishes.get('age', '')})
+・電話番号: {user_wishes.get('phone_number')}
+・美容師免許: {user_wishes.get('license')}
+・MBTI: {user_wishes.get('mbti')}
+
+■ 希望・状況
+・役職: {user_wishes.get('role')}
+・希望エリア: {user_wishes.get('area_prefecture')} {user_wishes.get('area_detail')}
+・職場満足度: {user_wishes.get('satisfaction')}
+・興味のある待遇: {user_wishes.get('perk')}
+・現在の状況: {user_wishes.get('current_status')}
+・転職希望時期: {user_wishes.get('timing')}
+"""
                 send_notification_email(subject, body)
             except Exception as e:
                 print(f"[Background] メール送信エラー: {e}")
                 traceback.print_exc()
 
-            # 2. ユーザーへウェルカムメッセージ送信
+            # 3. ユーザーへウェルカムメッセージ送信
             try:
                 with ApiClient(configuration) as api_client:
                     line_bot_api = MessagingApi(api_client)
@@ -340,13 +368,6 @@ def process_offer_background(user_id, user_wishes):
                     line_bot_api.push_message(PushMessageRequest( to=user_id, messages=[TextMessage(text=welcome_message)] ))
             except Exception as e:
                 print(f"[Background] LINE送信エラー: {e}")
-
-            # 3. 年齢計算
-            if 'birthdate' in user_wishes and user_wishes['birthdate']:
-                try:
-                    age = get_age_from_birthdate(user_wishes.get('birthdate'))
-                    user_wishes['age'] = f"{(age // 10) * 10}代"
-                except: user_wishes['age'] = ''
 
             # 4. ユーザー管理シートへの保存
             try:
