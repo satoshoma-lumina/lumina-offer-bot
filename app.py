@@ -6,16 +6,12 @@ import re
 from datetime import datetime, timedelta, timezone
 import traceback
 import requests
-import threading  # バックグラウンド処理用
+import threading
 
 from flask import Flask, request, abort, jsonify
 from flask_cors import CORS
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
-# ★SendGridを復活
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
-
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
@@ -49,29 +45,48 @@ GAS_WEBHOOK_URL = os.environ.get('GAS_WEBHOOK_URL')
 
 # --- Helper Functions ---
 
-# ★SendGrid用の送信関数に戻しました★
+# ★★★ Brevo (旧Sendinblue) APIを使用したメール送信 ★★★
 def send_notification_email(subject, body):
-    from_email = os.environ.get('MAIL_USERNAME')
-    api_key = os.environ.get('SENDGRID_API_KEY')
-    
-    if not from_email or not api_key:
-        print("メール送信用の環境変数(MAIL_USERNAME, SENDGRID_API_KEY)が設定されていません。")
+    api_key = os.environ.get('BREVO_API_KEY')
+    sender_email = os.environ.get('MAIL_USERNAME') # 送信元（Brevo登録メアド）
+    sender_name = "LUMINA Offer System"
+    to_email = SATO_EMAIL
+
+    if not api_key or not sender_email:
+        print("メール送信設定(BREVO_API_KEY, MAIL_USERNAME)が不足しています。")
         return
 
-    # 改行をHTMLタグに変換
-    message = Mail(
-        from_email=from_email,
-        to_emails=SATO_EMAIL,
-        subject=subject,
-        html_content=body.replace('\n', '<br>')
-    )
+    url = "https://api.brevo.com/v3/smtp/email"
     
+    payload = {
+        "sender": {
+            "name": sender_name,
+            "email": sender_email
+        },
+        "to": [
+            {
+                "email": to_email,
+                "name": "Admin"
+            }
+        ],
+        "subject": subject,
+        "htmlContent": body.replace('\n', '<br>')
+    }
+    
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "api-key": api_key
+    }
+
     try:
-        sg = SendGridAPIClient(api_key)
-        response = sg.send(message)
-        print(f"メール送信成功: {subject} (Status: {response.status_code})")
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [200, 201, 202]:
+            print(f"メール送信成功: {subject}")
+        else:
+            print(f"メール送信失敗: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"メール送信エラー: {e}")
+        print(f"メール送信通信エラー: {e}")
         traceback.print_exc()
 
 def generate_single_offer_message(user_wishes, salon_info):
@@ -307,7 +322,7 @@ def process_offer_background(user_id, user_wishes):
     # アプリケーションコンテキスト内で実行
     with app.app_context():
         try:
-            # 1. 管理者へメール通知 (SendGrid使用)
+            # 1. 管理者へメール通知 (Brevo API使用)
             try:
                 user_name = user_wishes.get('full_name', '不明なユーザー')
                 subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
