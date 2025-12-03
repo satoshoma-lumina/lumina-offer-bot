@@ -259,8 +259,27 @@ def create_salon_flex_message(salon, offer_text):
     recruitment_type = salon.get("募集", "")
     salon_id = salon.get('店舗ID')
     
+    # ★★★ 変更点: 住所のぼかしロジックを強化 ★★★
     address_full = salon.get("住所", "")
-    masked_address = "エリア: " + address_full.split(" ")[0] if address_full else "エリア: 非公開"
+    masked_address = "エリア: 非公開"
+    
+    if address_full:
+        if "区" in address_full:
+            # 「区」があればそこまで（例：東京都新宿区）
+            cutoff = address_full.find("区") + 1
+            masked_address = "エリア: " + address_full[:cutoff]
+        elif "市" in address_full:
+            # 「区」がなくて「市」があればそこまで（例：神奈川県平塚市）
+            cutoff = address_full.find("市") + 1
+            masked_address = "エリア: " + address_full[:cutoff]
+        elif "郡" in address_full:
+            # 「郡」があればそこまで
+            cutoff = address_full.find("郡") + 1
+            masked_address = "エリア: " + address_full[:cutoff]
+        else:
+            # それ以外は先頭10文字程度まで表示
+            cutoff = 10 if len(address_full) > 10 else len(address_full)
+            masked_address = "エリア: " + address_full[:cutoff] + "..."
 
     detail_liff_url = f"https://liff.line.me/{SALON_DETAIL_LIFF_ID}?salonId={salon_id}"
     call_request_liff_url = f"https://liff.line.me/{CALL_REQUEST_LIFF_ID}?salonId={salon_id}"
@@ -334,7 +353,6 @@ def process_offer_background(user_id, user_wishes):
                 user_name = user_wishes.get('full_name', '不明なユーザー')
                 subject = f"【LUMINAオファー】{user_name}様から新規プロフィール登録がありました"
                 
-                # ★修正点: 全ての入力情報をメール本文に含める
                 body = f"""
 新規ユーザー登録がありました。内容を確認してください。
 
